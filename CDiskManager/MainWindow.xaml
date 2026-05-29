@@ -1,0 +1,66 @@
+<Window
+    x:Class="CDiskManager.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="CDiskManager - C盘管理工具">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Custom title bar area -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Background="Transparent" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <FontIcon Grid.Column="0" Glyph="&#xEDA2;" FontSize="16" Margin="16,0,0,0"
+                      VerticalAlignment="Center"
+                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+            <TextBlock Grid.Column="1" Text="CDiskManager" VerticalAlignment="Center"
+                       Style="{StaticResource CaptionTextBlockStyle}"/>
+        </Grid>
+
+        <NavigationView x:Name="NavView" Grid.Row="1"
+                        IsBackButtonVisible="Collapsed"
+                        PaneDisplayMode="Left"
+                        OpenPaneLength="200"
+                        IsSettingsVisible="True"
+                        SelectionChanged="NavView_SelectionChanged"
+                        Loaded="NavView_Loaded">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="概览" Tag="Dashboard" Icon="Home"/>
+                <NavigationViewItemSeparator/>
+                <NavigationViewItem Content="空间扫描" Tag="DiskScan">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE9F5;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="垃圾清理" Tag="Cleanup">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE74D;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="大文件" Tag="LargeFiles">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE8B7;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="重复文件" Tag="DuplicateFiles">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE8C8;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="分区建议" Tag="PartitionAdvice">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE946;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <Frame x:Name="ContentFrame"/>
+        </NavigationView>
+    </Grid>
+</Window>

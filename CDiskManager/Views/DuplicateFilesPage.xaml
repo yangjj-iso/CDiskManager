@@ -1,0 +1,111 @@
+<Page
+    x:Class="CDiskManager.Views.DuplicateFilesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:CDiskManager.Models"
+    xmlns:vm="using:CDiskManager.ViewModels">
+
+    <Grid Padding="36,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Spacing="8">
+            <TextBlock Text="重复文件检测" Style="{StaticResource TitleTextBlockStyle}"/>
+            <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                       Style="{StaticResource BodyTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+        </StackPanel>
+
+        <!-- Controls -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" Margin="0,16,0,12">
+            <Button Content="开始扫描" Command="{x:Bind ViewModel.ScanCommand}"
+                    Style="{StaticResource AccentButtonStyle}"
+                    IsEnabled="{x:Bind ViewModel.IsScanning, Mode=OneWay, Converter={StaticResource BoolNegation}}"/>
+            <Button Content="取消" Command="{x:Bind ViewModel.CancelCommand}"
+                    IsEnabled="{x:Bind ViewModel.IsScanning, Mode=OneWay}"/>
+            <ComboBox MinWidth="90" VerticalAlignment="Center"
+                      ItemsSource="{x:Bind ViewModel.AvailableDrives}"
+                      SelectedItem="{x:Bind ViewModel.SelectedDrive, Mode=TwoWay}"
+                      ToolTipService.ToolTip="选择要扫描的分区"/>
+            <TextBlock Text="最小大小 (MB):" VerticalAlignment="Center" Margin="8,0,8,0"/>
+            <NumberBox Value="{x:Bind ViewModel.MinSizeMB, Mode=TwoWay}"
+                       Minimum="0.1" Maximum="100000" SpinButtonPlacementMode="Compact"
+                       SmallChange="1" LargeChange="10" Width="120"/>
+            <ProgressRing IsActive="{x:Bind ViewModel.IsScanning, Mode=OneWay}"
+                          Width="24" Height="24" Margin="12,0,0,0"/>
+            <TextBlock VerticalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                <Run Text="已扫描 "/>
+                <Run Text="{x:Bind ViewModel.ScannedCount, Mode=OneWay}"/>
+                <Run Text=" 个文件"/>
+            </TextBlock>
+        </StackPanel>
+
+        <!-- Batch action bar -->
+        <CommandBar Grid.Row="2" DefaultLabelPosition="Right" HorizontalAlignment="Left"
+                    Background="Transparent"
+                    Visibility="{x:Bind ViewModel.HasResults, Mode=OneWay}">
+            <AppBarButton Icon="Delete" Label="删除所选" Click="DeleteSelected_Click"/>
+        </CommandBar>
+
+        <!-- Duplicate groups -->
+        <ListView Grid.Row="3" ItemsSource="{x:Bind ViewModel.DuplicateGroups, Mode=OneWay}"
+                  SelectionMode="None">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="vm:DuplicateGroup">
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,4">
+                        <StackPanel Spacing="8">
+                            <Grid>
+                                <TextBlock Text="{x:Bind Header}" FontWeight="SemiBold"/>
+                                <TextBlock HorizontalAlignment="Right"
+                                           Foreground="{ThemeResource SystemFillColorCautionBrush}">
+                                    <Run Text="可释放 "/>
+                                    <Run Text="{x:Bind TotalWaste}" FontWeight="SemiBold"/>
+                                </TextBlock>
+                            </Grid>
+                            <ItemsRepeater ItemsSource="{x:Bind Files}">
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate x:DataType="models:FileItem">
+                                        <Grid Padding="0,5" ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox Grid.Column="0" MinWidth="0"
+                                                      IsChecked="{x:Bind IsSelected, Mode=TwoWay}"/>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind FullPath}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{x:Bind LastModifiedFormatted}"
+                                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="2" VerticalAlignment="Center"
+                                                    ToolTipService.ToolTip="打开所在位置"
+                                                    Click="OpenOne_Click" Tag="{x:Bind}">
+                                                <FontIcon Glyph="&#xE8DA;" FontSize="14"/>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </Grid>
+</Page>

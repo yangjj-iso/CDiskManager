@@ -1,0 +1,117 @@
+<Page
+    x:Class="CDiskManager.Views.DiskScanPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:CDiskManager.Models">
+
+    <Grid Padding="36,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Spacing="8">
+            <TextBlock Text="磁盘空间扫描" Style="{StaticResource TitleTextBlockStyle}"/>
+            <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                       Style="{StaticResource BodyTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+        </StackPanel>
+
+        <!-- Controls -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" Margin="0,16,0,12">
+            <Button Content="开始扫描" Command="{x:Bind ViewModel.StartScanCommand}"
+                    Style="{StaticResource AccentButtonStyle}"
+                    IsEnabled="{x:Bind ViewModel.IsScanning, Mode=OneWay, Converter={StaticResource BoolNegation}}"/>
+            <Button Content="取消" Command="{x:Bind ViewModel.CancelScanCommand}"
+                    IsEnabled="{x:Bind ViewModel.IsScanning, Mode=OneWay}"/>
+            <ComboBox MinWidth="90" VerticalAlignment="Center"
+                      ItemsSource="{x:Bind ViewModel.AvailableDrives}"
+                      SelectedItem="{x:Bind ViewModel.SelectedDrive, Mode=TwoWay}"
+                      ToolTipService.ToolTip="选择要扫描的分区"/>
+            <Button Command="{x:Bind ViewModel.NavigateUpCommand}"
+                    ToolTipService.ToolTip="返回上级目录">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE72B;" FontSize="14"/>
+                    <TextBlock Text="上级"/>
+                </StackPanel>
+            </Button>
+            <ProgressRing IsActive="{x:Bind ViewModel.IsScanning, Mode=OneWay}"
+                          Width="24" Height="24" Margin="12,0,0,0"/>
+            <TextBlock VerticalAlignment="Center" Margin="8,0,0,0"
+                       Visibility="{x:Bind ViewModel.IsScanning, Mode=OneWay}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                <Run Text="{x:Bind ViewModel.FileCount, Mode=OneWay}"/>
+                <Run Text=" 个文件 · "/>
+                <Run Text="{x:Bind ViewModel.BytesScanned, Mode=OneWay}"/>
+            </TextBlock>
+        </StackPanel>
+
+        <!-- Breadcrumb + current path while scanning -->
+        <Grid Grid.Row="2" Margin="0,0,0,8">
+            <BreadcrumbBar ItemsSource="{x:Bind ViewModel.Breadcrumbs, Mode=OneWay}"
+                           ItemClicked="Breadcrumb_ItemClicked"
+                           Visibility="{x:Bind ViewModel.IsScanning, Mode=OneWay, Converter={StaticResource EmptyToVisibility}, ConverterParameter=invert}">
+                <BreadcrumbBar.ItemTemplate>
+                    <DataTemplate x:DataType="models:FolderNode">
+                        <TextBlock Text="{x:Bind Name}"/>
+                    </DataTemplate>
+                </BreadcrumbBar.ItemTemplate>
+            </BreadcrumbBar>
+            <TextBlock Text="{x:Bind ViewModel.CurrentPath, Mode=OneWay}"
+                       TextTrimming="CharacterEllipsis"
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Visibility="{x:Bind ViewModel.IsScanning, Mode=OneWay}"/>
+        </Grid>
+
+        <!-- Folder / file list -->
+        <ListView Grid.Row="3" ItemsSource="{x:Bind ViewModel.CurrentChildren, Mode=OneWay}"
+                  SelectionMode="Single" ItemClick="FolderItem_Click" IsItemClickEnabled="True">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="models:FolderNode">
+                    <Grid Padding="4,10" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="110"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <FontIcon Grid.Column="0" Glyph="{x:Bind Glyph}" FontSize="18"
+                                  VerticalAlignment="Center"
+                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+
+                        <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <ProgressBar Value="{x:Bind DisplayPercent}" Maximum="100"
+                                         Height="5" CornerRadius="3"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                            <TextBlock HorizontalAlignment="Right" FontWeight="SemiBold"
+                                       Text="{x:Bind SizeFormatted}"/>
+                            <TextBlock HorizontalAlignment="Right"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Text="{x:Bind PercentLabel}"/>
+                        </StackPanel>
+
+                        <FontIcon Grid.Column="3" Glyph="&#xE76C;" FontSize="12"
+                                  Margin="4,0,0,0" VerticalAlignment="Center"
+                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                  Visibility="{x:Bind HasChildren}"/>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </Grid>
+</Page>
