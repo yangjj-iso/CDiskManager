@@ -164,6 +164,32 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public async Task CacheRelocationDoesNotSwallowCancellationRaisedByProgress()
+    {
+        var source = Path.Combine(_root, "progress-cancel-source");
+        var target = Path.Combine(_root, "progress-cancel-target");
+        WriteBytes(Path.Combine(source, "cache.bin"), 512, 10);
+        using var cts = new CancellationTokenSource();
+        var progress = new CancelOnReportProgress(cts);
+
+        var item = new CacheRelocationItem
+        {
+            Name = "progress cancel cache",
+            SourcePath = source,
+            TargetPath = target,
+            Size = 512,
+            IsSelected = true
+        };
+
+        var ex = await Record.ExceptionAsync(() =>
+            new CacheRelocationService().RelocateCachesAsync([item], progress, cts.Token));
+
+        Assert.IsAssignableFrom<OperationCanceledException>(ex);
+        Assert.True(File.Exists(Path.Combine(source, "cache.bin")));
+        Assert.False(Directory.Exists(target));
+    }
+
+    [Fact]
     public void FileOperationServiceDeletesExistingFilesAndReportsFailures()
     {
         var existingPath = Path.Combine(_root, "delete-me.bin");
@@ -271,5 +297,10 @@ public sealed class ServiceSmokeTests : IDisposable
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllBytes(path, Enumerable.Repeat(value, bytes).ToArray());
+    }
+
+    private sealed class CancelOnReportProgress(CancellationTokenSource cts) : IProgress<string>
+    {
+        public void Report(string value) => cts.Cancel();
     }
 }

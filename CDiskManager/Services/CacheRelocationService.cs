@@ -160,6 +160,10 @@ public sealed class CacheRelocationService
                     result.MovedCount++;
                     result.MovedBytes += existingBytes;
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch
                 {
                     result.FailedCount++;
