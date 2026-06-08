@@ -29,7 +29,10 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _cacheRelocationStatus = "";
     [ObservableProperty] private bool _isRelocatingCaches;
 
-    public bool CanRelocateCaches => !IsRelocatingCaches && !IsCDrive(CacheTargetDrive);
+    public bool CanRelocateCaches => !IsRelocatingCaches && !IsCDrive(CacheTargetDrive) && SelectedRelocatableCaches.Count > 0;
+    public List<Models.CacheRelocationItem> SelectedRelocatableCaches =>
+        RelocatableCaches.Where(i => i.IsSelected && !i.IsRelocated).ToList();
+    public long SelectedCacheBytes => SelectedRelocatableCaches.Sum(i => i.Size);
 
     /// <summary>Raised when the theme selection changes so the host window can apply it.</summary>
     public event Action<string>? ThemeChangeRequested;
@@ -137,7 +140,14 @@ public partial class SettingsViewModel : ObservableObject
 
         RelocatableCaches.Clear();
         foreach (var item in _cacheRelocation.GetRelocatableCaches(CacheTargetDrive))
+        {
+            item.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(Models.CacheRelocationItem.IsSelected))
+                    UpdateCacheRelocationStatus();
+            };
             RelocatableCaches.Add(item);
+        }
         UpdateCacheRelocationStatus();
     }
 
@@ -150,8 +160,9 @@ public partial class SettingsViewModel : ObservableObject
         CacheRelocationStatus = "正在迁移缓存...";
         try
         {
+            var selected = SelectedRelocatableCaches;
             var progress = new Progress<string>(name => CacheRelocationStatus = $"正在迁移: {name}");
-            var result = await _cacheRelocation.RelocateUserCachesAsync(CacheTargetDrive, progress);
+            var result = await _cacheRelocation.RelocateCachesAsync(selected, progress);
             RefreshRelocatableCaches();
             CacheRelocationStatus = result.FailedItems.Count > 0
                 ? $"{result.Summary}，失败示例: {string.Join("；", result.FailedItems.Take(3))}"
@@ -175,9 +186,30 @@ public partial class SettingsViewModel : ObservableObject
 
         var movable = RelocatableCaches.Where(i => !i.IsRelocated).ToList();
         var total = movable.Sum(i => i.Size);
+        var selected = SelectedRelocatableCaches;
+        var selectedTotal = selected.Sum(i => i.Size);
         CacheRelocationStatus = IsCDrive(CacheTargetDrive)
             ? "请选择 C 盘以外的目标盘"
-            : $"发现 {movable.Count:N0} 项可迁移缓存，约 {Helpers.FileSizeHelper.Format(total)}";
+            : $"发现 {movable.Count:N0} 项可迁移缓存，约 {Helpers.FileSizeHelper.Format(total)}；已选择 {selected.Count:N0} 项，约 {Helpers.FileSizeHelper.Format(selectedTotal)}";
+        OnPropertyChanged(nameof(CanRelocateCaches));
+        OnPropertyChanged(nameof(SelectedRelocatableCaches));
+        OnPropertyChanged(nameof(SelectedCacheBytes));
+    }
+
+    [RelayCommand]
+    private void SelectAllRelocatableCaches()
+    {
+        foreach (var item in RelocatableCaches.Where(i => !i.IsRelocated))
+            item.IsSelected = true;
+        UpdateCacheRelocationStatus();
+    }
+
+    [RelayCommand]
+    private void ClearRelocatableCacheSelection()
+    {
+        foreach (var item in RelocatableCaches)
+            item.IsSelected = false;
+        UpdateCacheRelocationStatus();
     }
 
     private static bool IsCDrive(string? drive)

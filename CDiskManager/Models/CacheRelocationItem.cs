@@ -1,12 +1,15 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace CDiskManager.Models;
 
-public class CacheRelocationItem
+public partial class CacheRelocationItem : ObservableObject
 {
     public string Name { get; set; } = string.Empty;
     public string SourcePath { get; set; } = string.Empty;
     public string TargetPath { get; set; } = string.Empty;
     public bool IsRelocated { get; set; }
     public long Size { get; set; }
+    [ObservableProperty] private bool _isSelected;
 
     public string SizeFormatted => Helpers.FileSizeHelper.Format(Size);
     public string StatusText => IsRelocated ? "已迁移" : "可迁移";

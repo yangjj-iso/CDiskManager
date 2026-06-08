@@ -141,6 +141,8 @@
                                       ItemsSource="{x:Bind ViewModel.AvailableDrives}"
                                       SelectedItem="{x:Bind ViewModel.CacheTargetDrive, Mode=TwoWay}"/>
                             <Button Content="刷新" Command="{x:Bind ViewModel.RefreshRelocatableCachesCommand}"/>
+                            <Button Content="全选" Command="{x:Bind ViewModel.SelectAllRelocatableCachesCommand}"/>
+                            <Button Content="清空" Command="{x:Bind ViewModel.ClearRelocatableCacheSelectionCommand}"/>
                             <Button Content="迁移缓存" Click="RelocateCaches_Click"
                                     Style="{StaticResource AccentButtonStyle}"
                                     IsEnabled="{x:Bind ViewModel.CanRelocateCaches, Mode=OneWay}"/>
@@ -171,17 +173,21 @@
                             <DataTemplate>
                                 <Grid Padding="4,6" ColumnSpacing="10">
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel>
+                                    <CheckBox Grid.Column="0"
+                                              VerticalAlignment="Center"
+                                              IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
+                                    <StackPanel Grid.Column="1">
                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
                                         <TextBlock Text="{Binding SourcePath}"
                                                    Style="{StaticResource CaptionTextBlockStyle}"
                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                    TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding SizeFormatted}" HorizontalAlignment="Right" FontWeight="SemiBold"/>
                                         <TextBlock Text="{Binding StatusText}"
                                                    HorizontalAlignment="Right"

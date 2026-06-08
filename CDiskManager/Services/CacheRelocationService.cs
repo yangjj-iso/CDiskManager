@@ -29,7 +29,8 @@ public sealed class CacheRelocationService
                         SourcePath = sourcePath,
                         TargetPath = targetPath,
                         IsRelocated = relocated,
-                        Size = Directory.Exists(sourcePath) && !relocated ? GetDirectorySize(sourcePath) : 0
+                        Size = Directory.Exists(sourcePath) && !relocated ? GetDirectorySize(sourcePath) : 0,
+                        IsSelected = Directory.Exists(sourcePath) && !relocated
                     };
                 }))
             .Where(i => Directory.Exists(i.SourcePath) || Directory.Exists(Path.GetDirectoryName(i.SourcePath) ?? ""))
