@@ -32,6 +32,7 @@ public sealed class CacheRelocationResult
     public int FailedCount { get; set; }
     public long MovedBytes { get; set; }
     public List<string> FailedItems { get; } = [];
+    public List<CacheRelocationFailure> Failures { get; } = [];
 
     public string Summary
     {
@@ -48,3 +49,5 @@ public sealed class CacheRelocationResult
         }
     }
 }
+
+public sealed record CacheRelocationFailure(string Name, string Reason);

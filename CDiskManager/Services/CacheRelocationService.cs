@@ -169,12 +169,18 @@ public sealed class CacheRelocationService
                 {
                     throw;
                 }
-                catch
+                catch (Exception ex)
                 {
                     result.FailedCount++;
                     result.FailedItems.Add(item.Name);
 
-                    RestoreSourceAfterFailedRelocation(item.SourcePath, item.TargetPath, targetExistedBeforeMove);
+                    var restored = RestoreSourceAfterFailedRelocation(item.SourcePath, item.TargetPath, targetExistedBeforeMove);
+                    var reason = string.IsNullOrWhiteSpace(ex.Message)
+                        ? "迁移失败"
+                        : ex.Message;
+                    if (!restored)
+                        reason += "；回滚原路径失败，请检查目标盘缓存目录";
+                    result.Failures.Add(new CacheRelocationFailure(item.Name, reason));
                 }
             }
 

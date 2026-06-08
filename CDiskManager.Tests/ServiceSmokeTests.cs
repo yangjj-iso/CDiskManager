@@ -349,6 +349,20 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public void CacheRelocationResultCarriesFailureReasons()
+    {
+        var result = new CacheRelocationResult
+        {
+            FailedCount = 1
+        };
+        result.FailedItems.Add("QQ Cache");
+        result.Failures.Add(new CacheRelocationFailure("QQ Cache", "文件正在使用"));
+
+        Assert.Contains("1 项失败", result.Summary);
+        Assert.Contains(result.Failures, f => f.Name == "QQ Cache" && f.Reason == "文件正在使用");
+    }
+
+    [Fact]
     public void FileOperationServiceDeletesExistingFilesAndReportsFailures()
     {
         var existingPath = Path.Combine(_root, "delete-me.bin");

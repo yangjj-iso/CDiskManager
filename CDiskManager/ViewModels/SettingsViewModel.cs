@@ -170,8 +170,8 @@ public partial class SettingsViewModel : ObservableObject
             var progress = new Progress<string>(name => CacheRelocationStatus = $"正在迁移: {name}");
             var result = await _cacheRelocation.RelocateCachesAsync(selected, progress, _cacheRelocationCts.Token);
             RefreshRelocatableCaches();
-            CacheRelocationStatus = result.FailedItems.Count > 0
-                ? $"{result.Summary}，失败示例: {string.Join("；", result.FailedItems.Take(3))}"
+            CacheRelocationStatus = result.Failures.Count > 0
+                ? $"{result.Summary}，失败示例: {string.Join("；", result.Failures.Take(3).Select(f => $"{f.Name}({f.Reason})"))}"
                 : result.Summary;
         }
         catch (OperationCanceledException)
