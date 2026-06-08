@@ -25,7 +25,27 @@ public sealed partial class PartitionAdvicePage : Page
     {
         if (sender is Microsoft.UI.Xaml.Controls.Button btn && btn.Tag is string path)
         {
-            System.Diagnostics.Process.Start("explorer.exe", path);
+            OpenPathInExplorer(path);
+        }
+    }
+
+    private static void OpenPathInExplorer(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        try
+        {
+            var target = Directory.Exists(path)
+                ? path
+                : Path.GetDirectoryName(path) ?? path;
+            if (!Directory.Exists(target))
+                target = Path.GetPathRoot(path) ?? target;
+
+            System.Diagnostics.Process.Start("explorer.exe", $"\"{target}\"");
+        }
+        catch
+        {
+            // Explorer integration is best-effort.
         }
     }
 }

@@ -44,6 +44,11 @@
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1" CornerRadius="8">
             <StackPanel Spacing="12">
+                <InfoBar IsOpen="{x:Bind ViewModel.HasSuggestions, Mode=OneWay}"
+                         IsClosable="False"
+                         Severity="Informational"
+                         Title="迁移建议不会自动移动文件"
+                         Message="请先确认目标盘空间和备份情况，再通过 Windows 文件夹位置属性或手动迁移工具处理。"/>
                 <Grid>
                     <StackPanel>
                         <TextBlock Text="分区概览" FontWeight="SemiBold"/>
@@ -132,8 +137,12 @@
                                     <TextBlock Text="预计释放" Style="{StaticResource CaptionTextBlockStyle}"
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Right"/>
                                 </StackPanel>
-                                <Button Grid.Column="3" Content="打开文件夹" VerticalAlignment="Center"
-                                        Click="OpenFolder_Click" Tag="{x:Bind CurrentPath}"/>
+                                <StackPanel Grid.Column="3" Spacing="8" VerticalAlignment="Center">
+                                    <Button Content="当前位置"
+                                            Click="OpenFolder_Click" Tag="{x:Bind CurrentPath}"/>
+                                    <Button Content="目标盘"
+                                            Click="OpenFolder_Click" Tag="{x:Bind SuggestedPath}"/>
+                                </StackPanel>
                             </Grid>
                         </Border>
                     </DataTemplate>
