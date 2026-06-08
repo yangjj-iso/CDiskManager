@@ -29,8 +29,10 @@ public sealed class CacheRelocationService
                         SourcePath = sourcePath,
                         TargetPath = targetPath,
                         IsRelocated = relocated,
+                        IsRecommended = d.IsRecommended,
+                        WarningText = d.WarningText,
                         Size = Directory.Exists(sourcePath) && !relocated ? GetDirectorySize(sourcePath) : 0,
-                        IsSelected = Directory.Exists(sourcePath) && !relocated
+                        IsSelected = d.IsRecommended && Directory.Exists(sourcePath) && !relocated
                     };
                 }))
             .Where(i => Directory.Exists(i.SourcePath) || Directory.Exists(Path.GetDirectoryName(i.SourcePath) ?? ""))
@@ -214,20 +216,20 @@ public sealed class CacheRelocationService
             new("B站 Cache", Path.Combine(roaming, @"bilibili\Cache"), "Bilibili_Cache"),
             new("B站 Code Cache", Path.Combine(roaming, @"bilibili\Code Cache"), "Bilibili_CodeCache"),
             new("B站 GPUCache", Path.Combine(roaming, @"bilibili\GPUCache"), "Bilibili_GPUCache"),
-            new("B站 IndexedDB", Path.Combine(roaming, @"bilibili\IndexedDB"), "Bilibili_IndexedDB"),
-            new("B站 Local Storage", Path.Combine(roaming, @"bilibili\Local Storage"), "Bilibili_LocalStorage"),
+            new("B站 IndexedDB", Path.Combine(roaming, @"bilibili\IndexedDB"), "Bilibili_IndexedDB", false, "可能包含客户端登录态、播放记录或本地配置，确认可迁移后再勾选。"),
+            new("B站 Local Storage", Path.Combine(roaming, @"bilibili\Local Storage"), "Bilibili_LocalStorage", false, "可能包含客户端登录态或本地配置，确认可迁移后再勾选。"),
             new("B站 Network Cache", Path.Combine(roaming, @"bilibili\Network"), "Bilibili_Network"),
             new("B站 更新缓存", Path.Combine(local, "bilibili-updater"), "Bilibili_Updater"),
 
             new("QQ Cache", Path.Combine(roaming, @"QQ\Cache"), "QQ_Cache"),
             new("QQ Code Cache", Path.Combine(roaming, @"QQ\Code Cache"), "QQ_CodeCache"),
-            new("QQ Local Storage", Path.Combine(roaming, @"QQ\Local Storage"), "QQ_LocalStorage"),
+            new("QQ Local Storage", Path.Combine(roaming, @"QQ\Local Storage"), "QQ_LocalStorage", false, "可能包含客户端登录态或本地配置，确认可迁移后再勾选。"),
             new("QQ Network Cache", Path.Combine(roaming, @"QQ\Network"), "QQ_Network"),
             new("QQEX Cache", Path.Combine(roaming, @"QQEX\Cache"), "QQEX_Cache"),
             new("QQEX Code Cache", Path.Combine(roaming, @"QQEX\Code Cache"), "QQEX_CodeCache"),
             new("QQEX GPUCache", Path.Combine(roaming, @"QQEX\GPUCache"), "QQEX_GPUCache"),
-            new("QQEX IndexedDB", Path.Combine(roaming, @"QQEX\IndexedDB"), "QQEX_IndexedDB"),
-            new("QQEX miniapp", Path.Combine(roaming, @"QQEX\miniapp"), "QQEX_miniapp"),
+            new("QQEX IndexedDB", Path.Combine(roaming, @"QQEX\IndexedDB"), "QQEX_IndexedDB", false, "可能包含小程序数据或本地配置，确认可迁移后再勾选。"),
+            new("QQEX miniapp", Path.Combine(roaming, @"QQEX\miniapp"), "QQEX_miniapp", false, "可能包含 QQ 小程序数据，不建议默认迁移。"),
             new("QQNT Cache", Path.Combine(roaming, @"Tencent\QQNT\Cache"), "Tencent_QQNT_Cache"),
             new("QQ 音乐缓存", Path.Combine(roaming, @"Tencent\QQMusic\Cache"), "Tencent_QQMusic_Cache"),
             new("腾讯视频缓存", Path.Combine(roaming, @"Tencent\QQLive\Cache"), "Tencent_QQLive_Cache"),
@@ -236,9 +238,9 @@ public sealed class CacheRelocationService
             new("腾讯 OMGCACHE", Path.Combine(roaming, @"Tencent\OMGCACHE"), "Tencent_OMGCACHE"),
             new("腾讯 QQTempSys", Path.Combine(roaming, @"Tencent\QQTempSys"), "Tencent_QQTempSys"),
 
-            new("QQ 文件缓存 Image", Path.Combine(documents, @"Tencent Files\*\Image"), "TencentFiles_Image"),
-            new("QQ 文件缓存 Video", Path.Combine(documents, @"Tencent Files\*\Video"), "TencentFiles_Video"),
-            new("QQ 文件缓存 FileRecv", Path.Combine(documents, @"Tencent Files\*\FileRecv"), "TencentFiles_FileRecv"),
+            new("QQ 文件缓存 Image", Path.Combine(documents, @"Tencent Files\*\Image"), "TencentFiles_Image", false, "聊天图片目录可能包含要保留的个人文件，不会默认勾选。"),
+            new("QQ 文件缓存 Video", Path.Combine(documents, @"Tencent Files\*\Video"), "TencentFiles_Video", false, "聊天视频目录可能包含要保留的个人文件，不会默认勾选。"),
+            new("QQ 文件缓存 FileRecv", Path.Combine(documents, @"Tencent Files\*\FileRecv"), "TencentFiles_FileRecv", false, "文件接收目录通常是个人文件，不会默认勾选。"),
 
             new("微信 XPlugin Cache", Path.Combine(roaming, @"Tencent\WeChat\XPlugin\*\Cache"), "WeChat_XPlugin_Cache"),
             new("微信 xwechat Cache", Path.Combine(roaming, @"Tencent\xwechat\*\Cache"), "WeChat_xwechat_Cache"),
@@ -313,5 +315,10 @@ public sealed class CacheRelocationService
         return process.ExitCode == 0 && Directory.Exists(source);
     }
 
-    private sealed record CacheDefinition(string Name, string SourcePath, string SafeName);
+    private sealed record CacheDefinition(
+        string Name,
+        string SourcePath,
+        string SafeName,
+        bool IsRecommended = true,
+        string WarningText = "");
 }

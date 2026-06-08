@@ -158,6 +158,20 @@ public sealed class ServiceSmokeTests : IDisposable
         Assert.Contains("跳过 1 个受限目录", category.ScanSummary);
     }
 
+    [Fact]
+    public void CacheRelocationItemMarksNonRecommendedCachesAsHighRisk()
+    {
+        var item = new CacheRelocationItem
+        {
+            IsRecommended = false,
+            WarningText = "聊天文件目录"
+        };
+
+        Assert.Equal("需手动确认", item.StatusText);
+        Assert.Equal("高风险", item.RecommendationLabel);
+        Assert.Contains("聊天文件", item.WarningText);
+    }
+
     private static void WriteBytes(string path, int bytes, byte value)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);

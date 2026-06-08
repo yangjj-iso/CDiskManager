@@ -33,10 +33,15 @@ public sealed partial class SettingsPage : Page
             return;
         }
 
+        var highRisk = selected.Count(i => !i.IsRecommended);
+        var highRiskText = highRisk > 0
+            ? $"\n\n当前选择包含 {highRisk:N0} 个需手动确认的高风险项，请确认这些目录不是要保留的聊天文件、登录态或本地配置。"
+            : "";
+
         var dialog = new ContentDialog
         {
             Title = "确认迁移缓存",
-            Content = $"将 {selected.Count:N0} 个所选缓存目录（约 {Helpers.FileSizeHelper.Format(ViewModel.SelectedCacheBytes)}）移动到 {target}CDiskManagerCache，并在原路径创建目录联接。\n\n请先关闭 B站、QQ、微信、企业微信、网易云、Chrome、Edge、VS Code 等相关客户端。被占用的缓存会迁移失败并保留原路径。\n\n不会迁移 Windows Update、Prefetch、系统日志等系统级目录，也不会默认迁移聊天文件整目录。",
+            Content = $"将 {selected.Count:N0} 个所选缓存目录（约 {Helpers.FileSizeHelper.Format(ViewModel.SelectedCacheBytes)}）移动到 {target}CDiskManagerCache，并在原路径创建目录联接。\n\n请先关闭 B站、QQ、微信、企业微信、网易云、Chrome、Edge、VS Code 等相关客户端。被占用的缓存会迁移失败并保留原路径。\n\n不会迁移 Windows Update、Prefetch、系统日志等系统级目录，也不会默认迁移聊天文件整目录。{highRiskText}",
             PrimaryButtonText = "开始迁移",
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Close,

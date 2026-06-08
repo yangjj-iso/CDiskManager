@@ -136,24 +136,30 @@
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        TextWrapping="Wrap"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Center">
                             <ComboBox MinWidth="110"
+                                      HorizontalAlignment="Right"
                                       ItemsSource="{x:Bind ViewModel.AvailableDrives}"
                                       SelectedItem="{x:Bind ViewModel.CacheTargetDrive, Mode=TwoWay}"/>
-                            <Button Content="刷新" Command="{x:Bind ViewModel.RefreshRelocatableCachesCommand}"/>
-                            <Button Content="全选" Command="{x:Bind ViewModel.SelectAllRelocatableCachesCommand}"/>
-                            <Button Content="清空" Command="{x:Bind ViewModel.ClearRelocatableCacheSelectionCommand}"/>
-                            <Button Content="迁移缓存" Click="RelocateCaches_Click"
-                                    Style="{StaticResource AccentButtonStyle}"
-                                    IsEnabled="{x:Bind ViewModel.CanRelocateCaches, Mode=OneWay}"/>
-                            <Button Content="取消迁移" Command="{x:Bind ViewModel.CancelCacheRelocationCommand}"
-                                    IsEnabled="{x:Bind ViewModel.IsRelocatingCaches, Mode=OneWay}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                <Button Content="刷新" Command="{x:Bind ViewModel.RefreshRelocatableCachesCommand}"/>
+                                <Button Content="推荐" Command="{x:Bind ViewModel.SelectRecommendedRelocatableCachesCommand}"/>
+                                <Button Content="全选" Command="{x:Bind ViewModel.SelectAllRelocatableCachesCommand}"/>
+                                <Button Content="清空" Command="{x:Bind ViewModel.ClearRelocatableCacheSelectionCommand}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                <Button Content="迁移缓存" Click="RelocateCaches_Click"
+                                        Style="{StaticResource AccentButtonStyle}"
+                                        IsEnabled="{x:Bind ViewModel.CanRelocateCaches, Mode=OneWay}"/>
+                                <Button Content="取消迁移" Command="{x:Bind ViewModel.CancelCacheRelocationCommand}"
+                                        IsEnabled="{x:Bind ViewModel.IsRelocatingCaches, Mode=OneWay}"/>
+                            </StackPanel>
                         </StackPanel>
                     </Grid>
 
                     <InfoBar IsOpen="True" IsClosable="False" Severity="Warning"
-                             Title="迁移前请关闭相关应用"
-                             Message="B站、QQ、微信、企业微信、网易云、Chrome、Edge、VS Code 等缓存可能被占用；迁移失败的项目会保留原路径。"/>
+                             Title="迁移方式"
+                             Message="先关闭相关客户端，选择 C 盘以外的目标盘，勾选缓存后点击迁移。程序会移动目录并在原路径创建目录联接；高风险项不会默认勾选。"/>
 
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
@@ -188,8 +194,25 @@
                                                    Style="{StaticResource CaptionTextBlockStyle}"
                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                    TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding TargetPath}"
+                                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding WarningText}"
+                                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                                   TextWrapping="Wrap"
+                                                   Visibility="{Binding WarningText, Converter={StaticResource EmptyToVisibility}}"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                        <Border Padding="6,1" CornerRadius="4"
+                                                HorizontalAlignment="Right"
+                                                Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
+                                                Visibility="{Binding RecommendationLabel, Converter={StaticResource EmptyToVisibility}}">
+                                            <TextBlock Text="{Binding RecommendationLabel}"
+                                                       FontSize="11"
+                                                       Foreground="{ThemeResource SystemFillColorCautionBrush}"/>
+                                        </Border>
                                         <TextBlock Text="{Binding SizeFormatted}" HorizontalAlignment="Right" FontWeight="SemiBold"/>
                                         <TextBlock Text="{Binding StatusText}"
                                                    HorizontalAlignment="Right"

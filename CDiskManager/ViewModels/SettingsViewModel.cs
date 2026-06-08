@@ -200,12 +200,23 @@ public partial class SettingsViewModel : ObservableObject
         var total = movable.Sum(i => i.Size);
         var selected = SelectedRelocatableCaches;
         var selectedTotal = selected.Sum(i => i.Size);
+        var highRiskCount = selected.Count(i => !i.IsRecommended);
         CacheRelocationStatus = IsCDrive(CacheTargetDrive)
             ? "请选择 C 盘以外的目标盘"
             : $"发现 {movable.Count:N0} 项可迁移缓存，约 {Helpers.FileSizeHelper.Format(total)}；已选择 {selected.Count:N0} 项，约 {Helpers.FileSizeHelper.Format(selectedTotal)}";
+        if (highRiskCount > 0 && !IsCDrive(CacheTargetDrive))
+            CacheRelocationStatus += $"，其中 {highRiskCount:N0} 项需手动确认";
         OnPropertyChanged(nameof(CanRelocateCaches));
         OnPropertyChanged(nameof(SelectedRelocatableCaches));
         OnPropertyChanged(nameof(SelectedCacheBytes));
+    }
+
+    [RelayCommand]
+    private void SelectRecommendedRelocatableCaches()
+    {
+        foreach (var item in RelocatableCaches.Where(i => !i.IsRelocated))
+            item.IsSelected = item.IsRecommended;
+        UpdateCacheRelocationStatus();
     }
 
     [RelayCommand]

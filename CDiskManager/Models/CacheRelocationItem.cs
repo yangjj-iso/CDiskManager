@@ -8,11 +8,14 @@ public partial class CacheRelocationItem : ObservableObject
     public string SourcePath { get; set; } = string.Empty;
     public string TargetPath { get; set; } = string.Empty;
     public bool IsRelocated { get; set; }
+    public bool IsRecommended { get; set; } = true;
+    public string WarningText { get; set; } = string.Empty;
     public long Size { get; set; }
     [ObservableProperty] private bool _isSelected;
 
     public string SizeFormatted => Helpers.FileSizeHelper.Format(Size);
-    public string StatusText => IsRelocated ? "已迁移" : "可迁移";
+    public string StatusText => IsRelocated ? "已迁移" : IsRecommended ? "推荐迁移" : "需手动确认";
+    public string RecommendationLabel => IsRecommended ? "" : "高风险";
 }
 
 public sealed class CacheRelocationResult
