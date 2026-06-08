@@ -565,8 +565,8 @@ public class CleanupService
     {
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        return
-        [
+        return new List<string>
+        {
             Path.Combine(localAppData, @"Google\Chrome\User Data\*\Cache"),
             Path.Combine(localAppData, @"Google\Chrome\User Data\*\Cache\Cache_Data"),
             Path.Combine(localAppData, @"Google\Chrome\User Data\*\AutofillAiModelCache"),
@@ -590,7 +590,7 @@ public class CleanupService
             Path.Combine(localAppData, @"Microsoft\Edge\User Data\*\ShaderCache"),
             Path.Combine(appData, @"Mozilla\Firefox\Profiles\*\cache2"),
             Path.Combine(appData, @"Mozilla\Firefox\Profiles\*\startupCache")
-        ];
+        };
     }
 
     private static List<string> GetApplicationCachePaths()
@@ -599,8 +599,8 @@ public class CleanupService
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
-        return
-        [
+        return new List<string>
+        {
             Path.Combine(localAppData, @"Microsoft\Teams\Cache"),
             Path.Combine(localAppData, @"Microsoft\Teams\Code Cache"),
             Path.Combine(localAppData, @"Microsoft\Teams\GPUCache"),
@@ -663,9 +663,6 @@ public class CleanupService
             Path.Combine(localAppData, @"Tencent\Wemeet"),
             Path.Combine(appData, @"Tencent\WeChat\XPlugin\*\Cache"),
             Path.Combine(appData, @"Tencent\xwechat\*\Cache"),
-            Path.Combine(userProfile, @"Documents\Tencent Files\*\Image"),
-            Path.Combine(userProfile, @"Documents\Tencent Files\*\Video"),
-            Path.Combine(userProfile, @"Documents\Tencent Files\*\FileRecv"),
             Path.Combine(userProfile, @"Documents\WXWork\*\Cache"),
             Path.Combine(userProfile, @"Documents\WXWork\qtCef\Cache"),
             Path.Combine(userProfile, @"Documents\WXWork\GPUCache"),
@@ -674,7 +671,30 @@ public class CleanupService
             Path.Combine(localAppData, @"wxworkweb\User Data\*\Code Cache"),
             Path.Combine(localAppData, @"NetEase\CloudMusic\Cache"),
             Path.Combine(localAppData, @"NetEase\CloudMusic\GPUCache")
-        ];
+        }
+            .Concat(DiscoverApplicationCachePaths(localAppData, appData))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static IEnumerable<string> DiscoverApplicationCachePaths(params string[] roots)
+    {
+        foreach (var root in roots)
+        {
+            if (!Directory.Exists(root)) continue;
+
+            foreach (var path in CacheRelocationService.DiscoverCacheDirectories(root, maxDepth: 3))
+            {
+                if (IsUserDataLikeCachePath(path)) continue;
+                yield return path;
+            }
+        }
+    }
+
+    private static bool IsUserDataLikeCachePath(string path)
+    {
+        var riskyParts = new[] { "IndexedDB", "Local Storage", "FileRecv", "Image", "Video", "Documents" };
+        return riskyParts.Any(p => path.Contains(p, StringComparison.OrdinalIgnoreCase));
     }
 }
 

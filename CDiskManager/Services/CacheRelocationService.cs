@@ -18,6 +18,7 @@ public sealed class CacheRelocationService
     {
         var targetRoot = BuildTargetRoot(targetDrive);
         return GetCacheDefinitions()
+            .Concat(DiscoverCacheDefinitions())
             .SelectMany(d => ExpandSourcePaths(d.SourcePath)
                 .Select(sourcePath =>
                 {
@@ -35,9 +36,11 @@ public sealed class CacheRelocationService
                         IsSelected = d.IsRecommended && Directory.Exists(sourcePath) && !relocated
                     };
                 }))
-            .Where(i => Directory.Exists(i.SourcePath) || Directory.Exists(Path.GetDirectoryName(i.SourcePath) ?? ""))
+            .Where(i => Directory.Exists(i.SourcePath))
             .GroupBy(i => i.SourcePath, StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First())
+            .OrderByDescending(i => i.Size)
+            .ThenBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
     }
 
@@ -258,6 +261,132 @@ public sealed class CacheRelocationService
             new("网易云音乐缓存", Path.Combine(local, @"NetEase\CloudMusic\Cache"), "NetEase_CloudMusic_Cache"),
             new("网易云音乐 GPUCache", Path.Combine(local, @"NetEase\CloudMusic\GPUCache"), "NetEase_CloudMusic_GPUCache")
         ];
+    }
+
+    private static IEnumerable<CacheDefinition> DiscoverCacheDefinitions()
+    {
+        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        var documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        var roots = new[]
+        {
+            (Root: local, Scope: "Local"),
+            (Root: roaming, Scope: "Roaming"),
+            (Root: documents, Scope: "Documents")
+        };
+
+        foreach (var (root, scope) in roots)
+        {
+            if (!Directory.Exists(root)) continue;
+
+            foreach (var path in DiscoverCacheDirectories(root, maxDepth: scope == "Documents" ? 4 : 3))
+            {
+                var risk = GetDiscoveryRisk(path);
+                var name = BuildDiscoveredName(root, path);
+                yield return new CacheDefinition(
+                    $"自动发现 {name}",
+                    path,
+                    $"Auto_{scope}_{SanitizeSafeName(name)}",
+                    risk.IsRecommended,
+                    risk.WarningText);
+            }
+        }
+    }
+
+    internal static IEnumerable<string> DiscoverCacheDirectories(string root, int maxDepth)
+    {
+        var pending = new Queue<(string Path, int Depth)>();
+        pending.Enqueue((root, 0));
+
+        while (pending.Count > 0)
+        {
+            var (current, depth) = pending.Dequeue();
+            IEnumerable<string> children;
+            try
+            {
+                children = Directory.EnumerateDirectories(current).ToList();
+            }
+            catch
+            {
+                continue;
+            }
+
+            foreach (var child in children)
+            {
+                var name = Path.GetFileName(child);
+                if (IsCacheDirectoryName(name))
+                    yield return child;
+
+                if (depth < maxDepth && ShouldDescendForCacheDiscovery(child, name))
+                    pending.Enqueue((child, depth + 1));
+            }
+        }
+    }
+
+    private static bool ShouldDescendForCacheDiscovery(string path, string name)
+    {
+        if (name.StartsWith(".", StringComparison.Ordinal) && !name.Equals(".gradle", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (IsReparsePoint(path))
+            return false;
+
+        var blocked = new[] { "Microsoft", "Windows", "Packages", "Temp", "CrashDumps" };
+        return !blocked.Contains(name, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool IsCacheDirectoryName(string name)
+    {
+        var exact = new[]
+        {
+            "Cache",
+            "Caches",
+            "Code Cache",
+            "GPUCache",
+            "ShaderCache",
+            "DawnCache",
+            "DawnGraphiteCache",
+            "DawnWebGPUCache",
+            "CacheStorage",
+            "CachedData",
+            "Network",
+            "blob_storage",
+            "htmlcache",
+            "media_cache",
+            "OMGCACHE",
+            "QQTempSys"
+        };
+
+        return exact.Contains(name, StringComparer.OrdinalIgnoreCase)
+               || name.EndsWith("Cache", StringComparison.OrdinalIgnoreCase)
+               || name.EndsWith("-cache", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static (bool IsRecommended, string WarningText) GetDiscoveryRisk(string path)
+    {
+        var riskyParts = new[] { "IndexedDB", "Local Storage", "FileRecv", "Image", "Video", "Documents" };
+        if (riskyParts.Any(p => path.Contains(p, StringComparison.OrdinalIgnoreCase)))
+        {
+            return (false, "自动发现的目录可能包含聊天文件、登录态或本地配置，确认可迁移后再勾选。");
+        }
+
+        return (true, "");
+    }
+
+    private static string BuildDiscoveredName(string root, string path)
+    {
+        var relative = Path.GetRelativePath(root, path);
+        return relative.Length > 64
+            ? "..." + relative[^61..]
+            : relative;
+    }
+
+    private static string SanitizeSafeName(string value)
+    {
+        var builder = new StringBuilder(value.Length);
+        foreach (var ch in value)
+            builder.Append(char.IsLetterOrDigit(ch) ? ch : '_');
+        return builder.ToString().Trim('_');
     }
 
     private static bool IsReparsePoint(string path)

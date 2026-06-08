@@ -275,6 +275,23 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public void CacheRelocationDiscoveryFindsNestedClientCaches()
+    {
+        var bilibiliCache = Path.Combine(_root, "bilibili", "User Data", "Default", "Cache");
+        var qqCodeCache = Path.Combine(_root, "Tencent", "QQ", "Code Cache");
+        var systemCache = Path.Combine(_root, "Microsoft", "Edge", "Cache");
+        Directory.CreateDirectory(bilibiliCache);
+        Directory.CreateDirectory(qqCodeCache);
+        Directory.CreateDirectory(systemCache);
+
+        var discovered = CacheRelocationService.DiscoverCacheDirectories(_root, maxDepth: 4).ToList();
+
+        Assert.Contains(bilibiliCache, discovered);
+        Assert.Contains(qqCodeCache, discovered);
+        Assert.DoesNotContain(systemCache, discovered);
+    }
+
+    [Fact]
     public void SettingsNormalizationClampsInvalidValuesAndUsesDriveRoot()
     {
         var settings = new AppSettings
