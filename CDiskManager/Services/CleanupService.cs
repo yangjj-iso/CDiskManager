@@ -431,9 +431,16 @@ public class CleanupService
 
             using var process = Process.Start(psi);
             if (process == null) return new DockerCommandResult(-1, "", "无法启动 docker");
-            var output = process.StandardOutput.ReadToEnd();
-            var error = process.StandardError.ReadToEnd();
-            process.WaitForExit(15_000);
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
+            if (!process.WaitForExit(15_000))
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                return new DockerCommandResult(-1, "", "docker 命令超时");
+            }
+
+            var output = outputTask.GetAwaiter().GetResult();
+            var error = errorTask.GetAwaiter().GetResult();
             return new DockerCommandResult(process.ExitCode, output, error);
         }
         catch (Exception ex)
