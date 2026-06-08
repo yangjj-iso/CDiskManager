@@ -11,6 +11,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly SettingsService _settings;
     private readonly PartitionAnalyzer _analyzer;
     private readonly CacheRelocationService _cacheRelocation;
+    private CancellationTokenSource? _cacheRelocationCts;
     private bool _loading;
 
     public ObservableCollection<string> AvailableDrives { get; } = [];
@@ -156,23 +157,34 @@ public partial class SettingsViewModel : ObservableObject
     {
         if (!CanRelocateCaches || CacheTargetDrive == null) return;
 
+        _cacheRelocationCts = new CancellationTokenSource();
         IsRelocatingCaches = true;
         CacheRelocationStatus = "正在迁移缓存...";
         try
         {
             var selected = SelectedRelocatableCaches;
             var progress = new Progress<string>(name => CacheRelocationStatus = $"正在迁移: {name}");
-            var result = await _cacheRelocation.RelocateCachesAsync(selected, progress);
+            var result = await _cacheRelocation.RelocateCachesAsync(selected, progress, _cacheRelocationCts.Token);
             RefreshRelocatableCaches();
             CacheRelocationStatus = result.FailedItems.Count > 0
                 ? $"{result.Summary}，失败示例: {string.Join("；", result.FailedItems.Take(3))}"
                 : result.Summary;
         }
+        catch (OperationCanceledException)
+        {
+            CacheRelocationStatus = "缓存迁移已取消";
+            RefreshRelocatableCaches();
+        }
         finally
         {
             IsRelocatingCaches = false;
+            _cacheRelocationCts.Dispose();
+            _cacheRelocationCts = null;
         }
     }
+
+    [RelayCommand]
+    private void CancelCacheRelocation() => _cacheRelocationCts?.Cancel();
 
     private void UpdateCacheRelocationStatus()
     {

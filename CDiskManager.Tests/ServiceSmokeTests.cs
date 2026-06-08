@@ -96,6 +96,31 @@ public sealed class ServiceSmokeTests : IDisposable
         Assert.True(File.Exists(Path.Combine(source, "cache.bin")));
     }
 
+    [Fact]
+    public async Task CacheRelocationHonorsCancellationBeforeMovingNextItem()
+    {
+        var source = Path.Combine(_root, "cancel-source");
+        var target = Path.Combine(_root, "cancel-target");
+        WriteBytes(Path.Combine(source, "cache.bin"), 512, 9);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var item = new CacheRelocationItem
+        {
+            Name = "cancel cache",
+            SourcePath = source,
+            TargetPath = target,
+            Size = 512,
+            IsSelected = true
+        };
+
+        var ex = await Record.ExceptionAsync(() =>
+            new CacheRelocationService().RelocateCachesAsync([item], ct: cts.Token));
+        Assert.IsAssignableFrom<OperationCanceledException>(ex);
+        Assert.True(File.Exists(Path.Combine(source, "cache.bin")));
+        Assert.False(Directory.Exists(target));
+    }
+
     [Theory]
     [InlineData("Images          7          2         1.09GB    769.2MB (70%)", 769_200_000L)]
     [InlineData("Build Cache     42         42        2.4GiB    1.2GiB (50%)", 1_288_490_188L)]

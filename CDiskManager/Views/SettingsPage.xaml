@@ -146,6 +146,8 @@
                             <Button Content="迁移缓存" Click="RelocateCaches_Click"
                                     Style="{StaticResource AccentButtonStyle}"
                                     IsEnabled="{x:Bind ViewModel.CanRelocateCaches, Mode=OneWay}"/>
+                            <Button Content="取消迁移" Command="{x:Bind ViewModel.CancelCacheRelocationCommand}"
+                                    IsEnabled="{x:Bind ViewModel.IsRelocatingCaches, Mode=OneWay}"/>
                         </StackPanel>
                     </Grid>
 

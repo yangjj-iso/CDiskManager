@@ -103,16 +103,23 @@ public sealed class CacheRelocationService
         return $"{safeName}_{hash}";
     }
 
-    public async Task<CacheRelocationResult> RelocateUserCachesAsync(string targetDrive, IProgress<string>? progress = null)
-        => await RelocateCachesAsync(GetRelocatableCaches(targetDrive), progress);
+    public async Task<CacheRelocationResult> RelocateUserCachesAsync(
+        string targetDrive,
+        IProgress<string>? progress = null,
+        CancellationToken ct = default)
+        => await RelocateCachesAsync(GetRelocatableCaches(targetDrive), progress, ct);
 
-    public async Task<CacheRelocationResult> RelocateCachesAsync(IEnumerable<CacheRelocationItem> items, IProgress<string>? progress = null)
+    public async Task<CacheRelocationResult> RelocateCachesAsync(
+        IEnumerable<CacheRelocationItem> items,
+        IProgress<string>? progress = null,
+        CancellationToken ct = default)
     {
         return await Task.Run(() =>
         {
             var result = new CacheRelocationResult();
             foreach (var item in items)
             {
+                ct.ThrowIfCancellationRequested();
                 progress?.Report(item.Name);
                 if (item.IsRelocated)
                 {
@@ -122,6 +129,7 @@ public sealed class CacheRelocationService
 
                 try
                 {
+                    ct.ThrowIfCancellationRequested();
                     Directory.CreateDirectory(Path.GetDirectoryName(item.TargetPath)!);
 
                     var existingBytes = Directory.Exists(item.SourcePath) ? GetDirectorySize(item.SourcePath) : 0;
@@ -142,6 +150,7 @@ public sealed class CacheRelocationService
                         Directory.CreateDirectory(item.TargetPath);
                     }
 
+                    ct.ThrowIfCancellationRequested();
                     Directory.CreateDirectory(Path.GetDirectoryName(item.SourcePath)!);
                     if (!CreateJunction(item.SourcePath, item.TargetPath))
                         throw new IOException("创建目录联接失败");
@@ -164,7 +173,7 @@ public sealed class CacheRelocationService
             }
 
             return result;
-        });
+        }, ct);
     }
 
     private static string BuildTargetRoot(string targetDrive)
