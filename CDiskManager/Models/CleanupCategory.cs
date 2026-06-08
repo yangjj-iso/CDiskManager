@@ -31,6 +31,7 @@ public partial class CleanupCategory : ObservableObject
     [ObservableProperty] private int _skippedPathCount;
 
     public string SizeFormatted => Helpers.FileSizeHelper.Format(Size);
+    public bool CanSelect => Size > 0 && !IsCalculating;
     public string RiskLabel => IsSystemLevel ? "系统级" : "";
     public string ScanSummary => MatchedPathCount > 0
         ? $"命中 {MatchedPathCount:N0} 个目录，扫描 {ScannedFileCount:N0} 个文件"
@@ -43,7 +44,15 @@ public partial class CleanupCategory : ObservableObject
         ? $"{FailedFileCount:N0} 个文件失败"
         : "";
 
-    partial void OnSizeChanged(long value) => OnPropertyChanged(nameof(SizeFormatted));
+    partial void OnSizeChanged(long value)
+    {
+        OnPropertyChanged(nameof(SizeFormatted));
+        OnPropertyChanged(nameof(CanSelect));
+        if (value <= 0 && IsSelected)
+            IsSelected = false;
+    }
+
+    partial void OnIsCalculatingChanged(bool value) => OnPropertyChanged(nameof(CanSelect));
     partial void OnDeletedFileCountChanged(int value) => OnPropertyChanged(nameof(DeletedSummary));
     partial void OnFailedFileCountChanged(int value) => OnPropertyChanged(nameof(FailedSummary));
     partial void OnMatchedPathCountChanged(int value) => OnPropertyChanged(nameof(ScanSummary));

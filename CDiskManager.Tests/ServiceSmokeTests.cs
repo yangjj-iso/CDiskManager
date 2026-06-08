@@ -356,6 +356,30 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public void CleanupCategoryDisablesSelectionForEmptyOrCalculatingItems()
+    {
+        var category = new CleanupCategory();
+
+        Assert.False(category.CanSelect);
+
+        category.IsCalculating = true;
+        category.Size = 1024;
+
+        Assert.False(category.CanSelect);
+
+        category.IsCalculating = false;
+        category.IsSelected = true;
+
+        Assert.True(category.CanSelect);
+        Assert.True(category.IsSelected);
+
+        category.Size = 0;
+
+        Assert.False(category.CanSelect);
+        Assert.False(category.IsSelected);
+    }
+
+    [Fact]
     public void CacheRelocationItemMarksNonRecommendedCachesAsHighRisk()
     {
         var item = new CacheRelocationItem

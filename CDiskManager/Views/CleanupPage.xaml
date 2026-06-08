@@ -106,6 +106,7 @@
                             </Grid.ColumnDefinitions>
 
                         <CheckBox Grid.Column="0" MinWidth="0"
+                                  IsEnabled="{x:Bind CanSelect, Mode=OneWay}"
                                   IsChecked="{x:Bind IsSelected, Mode=TwoWay}"/>
 
                         <FontIcon Grid.Column="1" Glyph="{x:Bind Glyph}" FontSize="20"

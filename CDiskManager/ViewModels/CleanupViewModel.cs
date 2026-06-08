@@ -141,7 +141,7 @@ public partial class CleanupViewModel : ObservableObject
     private void SelectRecommended()
     {
         foreach (var cat in Categories)
-            cat.IsSelected = cat.Size > 0 && !cat.IsSystemLevel;
+            cat.IsSelected = cat.CanSelect && !cat.IsSystemLevel;
         UpdateSelectionSummary();
     }
 
@@ -149,7 +149,7 @@ public partial class CleanupViewModel : ObservableObject
     private void SelectAllCleanable()
     {
         foreach (var cat in Categories)
-            cat.IsSelected = cat.Size > 0;
+            cat.IsSelected = cat.CanSelect;
         UpdateSelectionSummary();
     }
 
@@ -163,12 +163,12 @@ public partial class CleanupViewModel : ObservableObject
 
     /// <summary>Sum of selected, non-empty categories.</summary>
     public long SelectedBytes =>
-        Categories.Where(c => c.IsSelected && c.Size > 0).Sum(c => c.Size);
+        Categories.Where(c => c.IsSelected && c.CanSelect).Sum(c => c.Size);
 
-    public bool HasSelection => Categories.Any(c => c.IsSelected && c.Size > 0);
+    public bool HasSelection => Categories.Any(c => c.IsSelected && c.CanSelect);
 
     public List<CleanupCategory> SelectedSystemCategories =>
-        Categories.Where(c => c.IsSelected && c.Size > 0 && c.IsSystemLevel).ToList();
+        Categories.Where(c => c.IsSelected && c.CanSelect && c.IsSystemLevel).ToList();
 
     public string SelectedRiskWarningText
     {
@@ -198,7 +198,7 @@ public partial class CleanupViewModel : ObservableObject
 
     private void UpdateSelectionSummary()
     {
-        var selected = Categories.Where(c => c.IsSelected && c.Size > 0).ToList();
+        var selected = Categories.Where(c => c.IsSelected && c.CanSelect).ToList();
         var risky = selected.Count(c => c.IsSystemLevel);
         OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(CanCleanSelected));
@@ -218,7 +218,7 @@ public partial class CleanupViewModel : ObservableObject
 
         try
         {
-            var selected = Categories.Where(c => c.IsSelected && c.Size > 0).ToList();
+            var selected = Categories.Where(c => c.IsSelected && c.CanSelect).ToList();
             int done = 0;
 
             foreach (var cat in selected)
