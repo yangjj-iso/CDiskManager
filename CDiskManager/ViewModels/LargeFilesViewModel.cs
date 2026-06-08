@@ -23,6 +23,7 @@ public partial class LargeFilesViewModel : ObservableObject
     [ObservableProperty] private string _currentPath = "";
     [ObservableProperty] private string? _selectedDrive;
     [ObservableProperty] private string _resultSummary = "";
+    [ObservableProperty] private int _scannedFolderCount;
 
     public ObservableCollection<string> AvailableDrives { get; } = [];
     public ObservableCollection<FileItem> LargeFiles { get; } = [];
@@ -62,17 +63,32 @@ public partial class LargeFilesViewModel : ObservableObject
         IsScanning = true;
         LargeFiles.Clear();
         ResultSummary = "";
+        CurrentPath = "";
+        ScannedFolderCount = 0;
         StatusText = "正在扫描...";
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            var progress = new Progress<string>(p => CurrentPath = p);
+            var scannedFolders = 0;
+            var lastProgressUpdate = DateTime.MinValue;
+            var progress = new Progress<string>(p =>
+            {
+                scannedFolders++;
+                var now = DateTime.UtcNow;
+                if ((now - lastProgressUpdate).TotalMilliseconds < 180)
+                    return;
+
+                lastProgressUpdate = now;
+                ScannedFolderCount = scannedFolders;
+                CurrentPath = p;
+            });
             var minBytes = (long)(MinSizeMB * 1024 * 1024);
 
             var results = await Task.Run(() =>
                 _scanService.FindLargeFiles(root, minBytes, progress, _cts.Token), _cts.Token);
 
+            ScannedFolderCount = scannedFolders;
             foreach (var file in results)
                 LargeFiles.Add(file);
 
