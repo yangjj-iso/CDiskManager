@@ -67,11 +67,20 @@ public partial class CleanupViewModel : ObservableObject
             {
                 try
                 {
-                    var size = await _cleanupService.CalculateCategorySizeAsync(cat);
-                    total += size;
-                    cat.IsSelected = size > 0;
+                    var stats = await _cleanupService.CalculateCategoryStatsAsync(cat);
+                    cat.MatchedPathCount = stats.MatchedPaths;
+                    cat.ScannedFileCount = stats.ScannedFiles;
+                    cat.Size = stats.Bytes;
+                    total += stats.Bytes;
+                    cat.IsSelected = stats.Bytes > 0;
+
+                    if (stats.Bytes == 0 && stats.MatchedPaths == 0 && cat.Kind != CleanupKind.RecycleBin)
+                        cat.StatusDetail = "未命中已存在的缓存目录";
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    cat.StatusDetail = $"扫描失败: {ex.Message}";
+                }
                 finally
                 {
                     cat.IsCalculating = false;

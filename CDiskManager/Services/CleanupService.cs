@@ -125,7 +125,17 @@ public class CleanupService
 
     public async Task<long> CalculateCategorySizeAsync(CleanupCategory category, CancellationToken ct = default)
     {
-        var stats = await Task.Run(() =>
+        var stats = await CalculateCategoryStatsAsync(category, ct);
+
+        category.MatchedPathCount = stats.MatchedPaths;
+        category.ScannedFileCount = stats.ScannedFiles;
+        category.Size = stats.Bytes;
+        return stats.Bytes;
+    }
+
+    public async Task<CleanupScanStats> CalculateCategoryStatsAsync(CleanupCategory category, CancellationToken ct = default)
+    {
+        return await Task.Run(() =>
         {
             if (category.Kind == CleanupKind.RecycleBin)
             {
@@ -139,11 +149,6 @@ public class CleanupService
                     .Distinct(StringComparer.OrdinalIgnoreCase),
                 ct);
         }, ct);
-
-        category.MatchedPathCount = stats.MatchedPaths;
-        category.ScannedFileCount = stats.ScannedFiles;
-        category.Size = stats.Bytes;
-        return stats.Bytes;
     }
 
     public async Task<CleanupResult> CleanAsync(CleanupCategory category, IProgress<string>? progress = null, CancellationToken ct = default)
