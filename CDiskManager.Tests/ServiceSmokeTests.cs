@@ -514,13 +514,48 @@ public sealed class ServiceSmokeTests : IDisposable
     {
         var item = new CacheRelocationItem
         {
+            ClientName = "QQ",
             IsRecommended = false,
             WarningText = "聊天文件目录"
         };
 
         Assert.Equal("需手动确认", item.StatusText);
         Assert.Equal("高风险", item.RecommendationLabel);
+        Assert.Equal("QQ", item.ClientLabel);
         Assert.Contains("聊天文件", item.WarningText);
+    }
+
+    [Fact]
+    public void CacheRelocationDefinitionsIncludeActualQqNtAndWechatClientPaths()
+    {
+        var local = Path.Combine(_root, "Local");
+        var roaming = Path.Combine(_root, "Roaming");
+        var profile = Path.Combine(_root, "Profile");
+        var documents = Path.Combine(profile, "Documents");
+
+        var definitions = CacheRelocationService.BuildCacheDefinitions(local, roaming, profile, documents);
+
+        Assert.Contains(definitions, d =>
+            d.ClientName == "QQ"
+            && d.IsRecommended
+            && d.SourcePath == Path.Combine(documents, @"Tencent Files\*\nt_qq\nt_temp"));
+        Assert.Contains(definitions, d =>
+            d.ClientName == "QQ"
+            && !d.IsRecommended
+            && d.SourcePath == Path.Combine(documents, @"Tencent Files\*\nt_qq\nt_db")
+            && d.WarningText.Contains("聊天数据库"));
+        Assert.Contains(definitions, d =>
+            d.ClientName == "微信"
+            && d.IsRecommended
+            && d.SourcePath == Path.Combine(roaming, @"Tencent\xwechat\radium\cache"));
+        Assert.Contains(definitions, d =>
+            d.ClientName == "微信"
+            && !d.IsRecommended
+            && d.SourcePath == Path.Combine(documents, @"WeChat Files\*\FileStorage\File")
+            && d.WarningText.Contains("个人文件"));
+        Assert.Contains(definitions, d =>
+            d.ClientName == "企业微信"
+            && d.SourcePath == Path.Combine(roaming, @"Tencent\WXWork\*\Cache"));
     }
 
     [Fact]

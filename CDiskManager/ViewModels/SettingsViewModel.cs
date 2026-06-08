@@ -205,11 +205,15 @@ public partial class SettingsViewModel : ObservableObject
         var selected = SelectedRelocatableCaches;
         var selectedTotal = selected.Sum(i => i.Size);
         var highRiskCount = selected.Count(i => !i.IsRecommended);
+        var qqWechatCount = movable.Count(i =>
+            string.Equals(i.ClientName, "QQ", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(i.ClientName, "微信", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(i.ClientName, "企业微信", StringComparison.OrdinalIgnoreCase));
         var hasEnoughSpace = HasEnoughCacheTargetSpace(CacheTargetDrive, selectedTotal);
         CacheRelocationStatus = IsCDrive(CacheTargetDrive)
             ? "请选择 C 盘以外的目标盘"
             : hasEnoughSpace
-                ? $"发现 {movable.Count:N0} 项可迁移缓存，约 {Helpers.FileSizeHelper.Format(total)}；已选择 {selected.Count:N0} 项，约 {Helpers.FileSizeHelper.Format(selectedTotal)}"
+                ? $"发现 {movable.Count:N0} 项可迁移缓存，QQ/微信相关 {qqWechatCount:N0} 项，约 {Helpers.FileSizeHelper.Format(total)}；已选择 {selected.Count:N0} 项，约 {Helpers.FileSizeHelper.Format(selectedTotal)}"
                 : $"目标盘可用空间不足；已选择 {selected.Count:N0} 项，约 {Helpers.FileSizeHelper.Format(selectedTotal)}";
         if (highRiskCount > 0 && !IsCDrive(CacheTargetDrive) && hasEnoughSpace)
             CacheRelocationStatus += $"，其中 {highRiskCount:N0} 项需手动确认";

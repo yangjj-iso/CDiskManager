@@ -5,6 +5,7 @@ namespace CDiskManager.Models;
 public partial class CacheRelocationItem : ObservableObject
 {
     public string Name { get; set; } = string.Empty;
+    public string ClientName { get; set; } = string.Empty;
     public string SourcePath { get; set; } = string.Empty;
     public string TargetPath { get; set; } = string.Empty;
     public bool IsRelocated { get; set; }
@@ -17,6 +18,7 @@ public partial class CacheRelocationItem : ObservableObject
     public bool CanSelect => !IsRelocated && Size > 0;
     public string StatusText => IsRelocated ? "已迁移" : IsRecommended ? "推荐迁移" : "需手动确认";
     public string RecommendationLabel => IsRecommended ? "" : "高风险";
+    public string ClientLabel => string.IsNullOrWhiteSpace(ClientName) ? "通用缓存" : ClientName;
 
     partial void OnIsSelectedChanged(bool value)
     {
