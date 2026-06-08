@@ -77,8 +77,18 @@ public class SettingsService
         };
 
         settings.DefaultScanDrive = NormalizeDrive(settings.DefaultScanDrive);
-        settings.LargeFileMinMB = Clamp(settings.LargeFileMinMB, 1, 1_000_000);
-        settings.DuplicateMinMB = Clamp(settings.DuplicateMinMB, 0.1, 100_000);
+        settings.LargeFileMinMB = NormalizeLargeFileMinMB(settings.LargeFileMinMB);
+        settings.DuplicateMinMB = NormalizeDuplicateMinMB(settings.DuplicateMinMB);
+    }
+
+    internal static double NormalizeLargeFileMinMB(double value) => Clamp(value, 1, 1_000_000);
+
+    internal static double NormalizeDuplicateMinMB(double value) => Clamp(value, 0.1, 100_000);
+
+    internal static long MegabytesToBytes(double value)
+    {
+        var normalized = Clamp(value, 0.1, 1_000_000);
+        return checked((long)(normalized * 1024 * 1024));
     }
 
     private static string NormalizeDrive(string? drive)
@@ -98,7 +108,8 @@ public class SettingsService
 
     private static double Clamp(double value, double min, double max)
     {
-        if (double.IsNaN(value) || double.IsInfinity(value)) return min;
+        if (double.IsNaN(value) || double.IsNegativeInfinity(value)) return min;
+        if (double.IsPositiveInfinity(value)) return max;
         return Math.Clamp(value, min, max);
     }
 }

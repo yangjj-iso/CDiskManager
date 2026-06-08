@@ -65,6 +65,8 @@ public partial class LargeFilesViewModel : ObservableObject
     {
         if (IsScanning) return;
         var root = SelectedDrive ?? @"C:\";
+        var minSizeMb = SettingsService.NormalizeLargeFileMinMB(MinSizeMB);
+        MinSizeMB = minSizeMb;
 
         _cts = new CancellationTokenSource();
         IsScanning = true;
@@ -93,7 +95,7 @@ public partial class LargeFilesViewModel : ObservableObject
                 CurrentPath = p;
                 CurrentPathDisplay = BuildDisplayPath(root, p);
             });
-            var minBytes = (long)(MinSizeMB * 1024 * 1024);
+            var minBytes = SettingsService.MegabytesToBytes(minSizeMb);
 
             var results = await Task.Run(() =>
                 _scanService.FindLargeFiles(root, minBytes, progress, _cts.Token), _cts.Token);
@@ -106,8 +108,8 @@ public partial class LargeFilesViewModel : ObservableObject
             CurrentPath = "";
             CurrentPathDisplay = "";
             StatusText = LargeFiles.Count > 0
-                ? $"找到 {LargeFiles.Count:N0} 个大文件（> {MinSizeMB:F0} MB），用时 {sw.Elapsed.TotalSeconds:F1} 秒"
-                : $"未找到大于 {MinSizeMB:F0} MB 的文件";
+                ? $"找到 {LargeFiles.Count:N0} 个大文件（> {minSizeMb:F0} MB），用时 {sw.Elapsed.TotalSeconds:F1} 秒"
+                : $"未找到大于 {minSizeMb:F0} MB 的文件";
             ResultSummary = LargeFiles.Count > 0
                 ? $"{LargeFiles.Count:N0} 个文件 · 合计 {Helpers.FileSizeHelper.Format(LargeFiles.Sum(f => f.Size))}"
                 : "";

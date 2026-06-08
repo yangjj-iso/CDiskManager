@@ -528,6 +528,16 @@ public sealed class ServiceSmokeTests : IDisposable
         Assert.Equal(0.1, settings.DuplicateMinMB);
     }
 
+    [Fact]
+    public void ScanThresholdNormalizationRejectsInvalidRuntimeInputs()
+    {
+        Assert.Equal(1, SettingsService.NormalizeLargeFileMinMB(double.NaN));
+        Assert.Equal(1_000_000, SettingsService.NormalizeLargeFileMinMB(double.PositiveInfinity));
+        Assert.Equal(0.1, SettingsService.NormalizeDuplicateMinMB(-10));
+        Assert.Equal(100_000, SettingsService.NormalizeDuplicateMinMB(1_000_000));
+        Assert.Equal(104_857_600L, SettingsService.MegabytesToBytes(100));
+    }
+
     private static void WriteBytes(string path, int bytes, byte value)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);

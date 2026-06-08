@@ -82,6 +82,8 @@ public partial class DuplicateFilesViewModel : ObservableObject
         try
         {
             var root = SelectedDrive ?? @"C:\";
+            var minSizeMb = SettingsService.NormalizeDuplicateMinMB(MinSizeMB);
+            MinSizeMB = minSizeMb;
             var progress = new Progress<(int scanned, string current)>(p =>
             {
                 ScannedCount = p.scanned;
@@ -89,7 +91,7 @@ public partial class DuplicateFilesViewModel : ObservableObject
                 CurrentPathDisplay = BuildDisplayPath(root, p.current);
             });
 
-            var minBytes = (long)(MinSizeMB * 1024 * 1024);
+            var minBytes = SettingsService.MegabytesToBytes(minSizeMb);
             var results = await _detector.FindDuplicatesAsync(root, minBytes, progress, _cts.Token);
 
             long waste = 0;
