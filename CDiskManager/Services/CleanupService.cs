@@ -1,5 +1,8 @@
 using CDiskManager.Models;
 using CDiskManager.Helpers;
+using System.Diagnostics;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace CDiskManager.Services;
 
@@ -73,6 +76,24 @@ public class CleanupService
             },
             new CleanupCategory
             {
+                Name = "Docker 专清",
+                Description = "停止容器、无用镜像、网络与构建缓存",
+                Glyph = "\uE950",
+                Kind = CleanupKind.DockerPrune,
+                IsSystemLevel = true,
+                WarningText = "执行 docker system prune -af，不删除 volume。请确认不需要已停止容器和未使用镜像。"
+            },
+            new CleanupCategory
+            {
+                Name = "Docker 未使用卷",
+                Description = "未被容器使用的 Docker volume",
+                Glyph = "\uEDA2",
+                Kind = CleanupKind.DockerVolumes,
+                IsSystemLevel = true,
+                WarningText = "执行 docker volume prune -f。Volume 可能保存数据库或项目数据，只在确认不需要这些卷时清理。"
+            },
+            new CleanupCategory
+            {
                 Name = "系统日志与崩溃转储",
                 Description = "Windows 日志文件与崩溃转储",
                 Glyph = "\uE9F9",
@@ -143,6 +164,11 @@ public class CleanupService
                 return new CleanupScanStats(recycleBinSize, recycleBinSize > 0 ? 1 : 0, 0);
             }
 
+            if (category.Kind is CleanupKind.DockerPrune or CleanupKind.DockerVolumes)
+            {
+                return GetDockerStats(category.Kind);
+            }
+
             return GetDirectoriesSize(
                 category.Paths
                     .SelectMany(ExpandPathPattern)
@@ -169,6 +195,32 @@ public class CleanupService
                     result.FailedFiles = size > 0 ? 1 : 0;
                 }
                 progress?.Report("回收站");
+                return result;
+            }, ct);
+        }
+
+        if (category.Kind is CleanupKind.DockerPrune or CleanupKind.DockerVolumes)
+        {
+            return await Task.Run(() =>
+            {
+                var stats = GetDockerStats(category.Kind);
+                var result = new CleanupResult();
+                var arguments = category.Kind == CleanupKind.DockerVolumes
+                    ? "volume prune -f"
+                    : "system prune -af";
+
+                var command = RunDocker(arguments);
+                if (command.ExitCode == 0)
+                {
+                    result.CleanedBytes = stats.Bytes;
+                    result.DeletedFiles = stats.ScannedFiles;
+                }
+                else
+                {
+                    result.FailedFiles = 1;
+                    result.FailedPaths.Add(string.IsNullOrWhiteSpace(command.Error) ? "docker" : command.Error.Trim());
+                }
+                progress?.Report(category.Name);
                 return result;
             }, ct);
         }
@@ -304,6 +356,90 @@ public class CleanupService
             }
         }
         return size;
+    }
+
+    private static CleanupScanStats GetDockerStats(CleanupKind kind)
+    {
+        var command = RunDocker("system df");
+        if (command.ExitCode != 0 || string.IsNullOrWhiteSpace(command.Output))
+            return new CleanupScanStats(0, 0, 0);
+
+        long bytes = 0;
+        var count = 0;
+        foreach (var line in command.Output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var trimmed = line.Trim();
+            if (trimmed.StartsWith("TYPE", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var isVolumeLine = trimmed.StartsWith("Local Volumes", StringComparison.OrdinalIgnoreCase);
+            var include = kind == CleanupKind.DockerVolumes
+                ? isVolumeLine
+                : !isVolumeLine && (
+                    trimmed.StartsWith("Images", StringComparison.OrdinalIgnoreCase)
+                    || trimmed.StartsWith("Containers", StringComparison.OrdinalIgnoreCase)
+                    || trimmed.StartsWith("Build Cache", StringComparison.OrdinalIgnoreCase));
+
+            if (!include) continue;
+
+            var reclaimable = ExtractDockerReclaimableBytes(trimmed);
+            if (reclaimable > 0)
+            {
+                bytes += reclaimable;
+                count++;
+            }
+        }
+
+        return new CleanupScanStats(bytes, bytes > 0 ? 1 : 0, count);
+    }
+
+    private static long ExtractDockerReclaimableBytes(string line)
+    {
+        var match = Regex.Match(line, @"([0-9]+(?:\.[0-9]+)?)\s*([KMGT]?i?B)\s*\([^)]*%\)\s*$", RegexOptions.IgnoreCase);
+        if (!match.Success) return 0;
+
+        var value = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+        var unit = match.Groups[2].Value.ToUpperInvariant();
+        var multiplier = unit switch
+        {
+            "KB" => 1_000d,
+            "MB" => 1_000_000d,
+            "GB" => 1_000_000_000d,
+            "TB" => 1_000_000_000_000d,
+            "KIB" => 1024d,
+            "MIB" => 1024d * 1024,
+            "GIB" => 1024d * 1024 * 1024,
+            "TIB" => 1024d * 1024 * 1024 * 1024,
+            _ => 1d
+        };
+        return (long)(value * multiplier);
+    }
+
+    private static DockerCommandResult RunDocker(string arguments)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "docker",
+                Arguments = arguments,
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            using var process = Process.Start(psi);
+            if (process == null) return new DockerCommandResult(-1, "", "无法启动 docker");
+            var output = process.StandardOutput.ReadToEnd();
+            var error = process.StandardError.ReadToEnd();
+            process.WaitForExit(15_000);
+            return new DockerCommandResult(process.ExitCode, output, error);
+        }
+        catch (Exception ex)
+        {
+            return new DockerCommandResult(-1, "", ex.Message);
+        }
     }
 
     private static readonly EnumerationOptions DeepOptions = new()
@@ -443,6 +579,8 @@ public class CleanupService
 }
 
 public readonly record struct CleanupScanStats(long Bytes, int MatchedPaths, int ScannedFiles);
+
+public readonly record struct DockerCommandResult(int ExitCode, string Output, string Error);
 
 public sealed class CleanupResult
 {

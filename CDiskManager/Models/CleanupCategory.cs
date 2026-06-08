@@ -5,7 +5,9 @@ namespace CDiskManager.Models;
 public enum CleanupKind
 {
     Directory,
-    RecycleBin
+    RecycleBin,
+    DockerPrune,
+    DockerVolumes
 }
 
 public partial class CleanupCategory : ObservableObject

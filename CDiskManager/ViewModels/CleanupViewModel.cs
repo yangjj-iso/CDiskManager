@@ -75,7 +75,11 @@ public partial class CleanupViewModel : ObservableObject
                     cat.IsSelected = stats.Bytes > 0;
 
                     if (stats.Bytes == 0 && stats.MatchedPaths == 0 && cat.Kind != CleanupKind.RecycleBin)
-                        cat.StatusDetail = "未命中已存在的缓存目录";
+                    {
+                        cat.StatusDetail = cat.Kind is CleanupKind.DockerPrune or CleanupKind.DockerVolumes
+                            ? "Docker 未运行或没有可回收项目"
+                            : "未命中已存在的缓存目录";
+                    }
                 }
                 catch (Exception ex)
                 {
