@@ -304,6 +304,15 @@ public sealed class ServiceSmokeTests : IDisposable
         Assert.Equal(expectedBytes, CleanupService.ExtractDockerPruneReclaimedBytes(output));
     }
 
+    [Fact]
+    public void DockerPruneParserDistinguishesZeroFromMissingOutput()
+    {
+        Assert.True(CleanupService.TryExtractDockerPruneReclaimedBytes("Total reclaimed space: 0B", out var zeroBytes));
+        Assert.Equal(0, zeroBytes);
+
+        Assert.False(CleanupService.TryExtractDockerPruneReclaimedBytes("Deleted build cache objects", out _));
+    }
+
     [Theory]
     [InlineData("error during connect: this error may indicate that the docker daemon is not running", "daemon 不可访问")]
     [InlineData("failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine; check if the path is correct and if the daemon is running: open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.", "daemon 不可访问")]

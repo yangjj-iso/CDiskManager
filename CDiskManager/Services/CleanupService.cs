@@ -214,8 +214,9 @@ public class CleanupService
                 ct.ThrowIfCancellationRequested();
                 if (command.ExitCode == 0)
                 {
-                    var actualBytes = ExtractDockerPruneReclaimedBytes(command.Output);
-                    result.CleanedBytes = actualBytes > 0 ? actualBytes : stats.Bytes;
+                    result.CleanedBytes = TryExtractDockerPruneReclaimedBytes(command.Output, out var actualBytes)
+                        ? actualBytes
+                        : stats.Bytes;
                     result.DeletedFiles = stats.ScannedFiles;
                 }
                 else
@@ -443,16 +444,21 @@ public class CleanupService
     }
 
     internal static long ExtractDockerPruneReclaimedBytes(string output)
+        => TryExtractDockerPruneReclaimedBytes(output, out var bytes) ? bytes : 0;
+
+    internal static bool TryExtractDockerPruneReclaimedBytes(string output, out long bytes)
     {
-        if (string.IsNullOrWhiteSpace(output)) return 0;
+        bytes = 0;
+        if (string.IsNullOrWhiteSpace(output)) return false;
 
         var match = Regex.Match(
             output,
             @"Total\s+reclaimed\s+space:\s*([0-9]+(?:\.[0-9]+)?)\s*([KMGT]?i?B)",
             RegexOptions.IgnoreCase);
-        return match.Success
-            ? ParseDockerSize(match.Groups[1].Value, match.Groups[2].Value)
-            : 0;
+        if (!match.Success) return false;
+
+        bytes = ParseDockerSize(match.Groups[1].Value, match.Groups[2].Value);
+        return true;
     }
 
     private static long ParseDockerSize(string rawValue, string rawUnit)
