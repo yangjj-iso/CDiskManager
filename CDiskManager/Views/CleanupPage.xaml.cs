@@ -35,10 +35,17 @@ public sealed partial class CleanupPage : Page
             return;
         }
 
+        var riskText = ViewModel.SelectedRiskWarningText;
+        var content = $"将清理所选类别，预计释放 {Helpers.FileSizeHelper.Format(ViewModel.SelectedBytes)}。\n此操作不可撤销（回收站除外），是否继续？";
+        if (!string.IsNullOrWhiteSpace(riskText))
+        {
+            content += $"\n\n{riskText}\n\n如果 Windows 更新、安装程序或故障排查正在进行，请取消。";
+        }
+
         var dialog = new ContentDialog
         {
             Title = "确认清理",
-            Content = $"将清理所选类别，预计释放 {Helpers.FileSizeHelper.Format(ViewModel.SelectedBytes)}。\n此操作不可撤销（回收站除外），是否继续？",
+            Content = content,
             PrimaryButtonText = "开始清理",
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Close,

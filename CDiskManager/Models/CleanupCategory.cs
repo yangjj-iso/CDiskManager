@@ -15,6 +15,8 @@ public partial class CleanupCategory : ObservableObject
     public string Glyph { get; set; } = "\uE74D";
     public CleanupKind Kind { get; set; } = CleanupKind.Directory;
     public List<string> Paths { get; set; } = [];
+    public bool IsSystemLevel { get; set; }
+    public string WarningText { get; set; } = string.Empty;
 
     [ObservableProperty] private long _size;
     [ObservableProperty] private bool _isSelected;
@@ -24,6 +26,7 @@ public partial class CleanupCategory : ObservableObject
     [ObservableProperty] private string _statusDetail = "";
 
     public string SizeFormatted => Helpers.FileSizeHelper.Format(Size);
+    public string RiskLabel => IsSystemLevel ? "系统级" : "";
     public string DeletedSummary => DeletedFileCount > 0
         ? $"已删除 {DeletedFileCount:N0} 个文件"
         : "";

@@ -17,6 +17,8 @@ public class CleanupService
                 Name = "Windows 临时文件",
                 Description = "系统和用户临时文件夹中的文件",
                 Glyph = "\uE7C3",
+                IsSystemLevel = true,
+                WarningText = "包含 Windows 临时目录和商店应用临时目录。系统更新或安装程序正在运行时不要清理。",
                 Paths = [
                     Path.GetTempPath(),
                     Path.Combine(localAppData, "Temp"),
@@ -33,6 +35,8 @@ public class CleanupService
                 Name = "Windows Update 缓存",
                 Description = "Windows 更新下载的安装包缓存",
                 Glyph = "\uE895",
+                IsSystemLevel = true,
+                WarningText = "会删除 Windows 更新下载缓存。正在更新、下载补丁或等待重启时不要清理。",
                 Paths = [@"C:\Windows\SoftwareDistribution\Download"]
             },
             new CleanupCategory
@@ -40,6 +44,8 @@ public class CleanupService
                 Name = "预读取缓存",
                 Description = "Prefetch 预读取数据，删除后首次启动程序略慢",
                 Glyph = "\uE945",
+                IsSystemLevel = true,
+                WarningText = "Prefetch 是系统启动优化数据。清理后不会释放很多空间，短期内程序启动可能变慢。",
                 Paths = [@"C:\Windows\Prefetch"]
             },
             new CleanupCategory
@@ -63,6 +69,8 @@ public class CleanupService
                 Name = "系统日志与崩溃转储",
                 Description = "Windows 日志文件与崩溃转储",
                 Glyph = "\uE9F9",
+                IsSystemLevel = true,
+                WarningText = "会删除部分诊断日志和崩溃转储。排查系统或软件问题前不要清理。",
                 Paths = [
                     @"C:\Windows\Logs",
                     @"C:\Windows\System32\LogFiles",
@@ -76,6 +84,8 @@ public class CleanupService
                 Name = "传递优化文件",
                 Description = "Windows 更新点对点分发的缓存文件",
                 Glyph = "\uE968",
+                IsSystemLevel = true,
+                WarningText = "会删除 Windows 更新传递优化缓存。系统更新正在下载或分发时不要清理。",
                 Paths = [
                     @"C:\Windows\SoftwareDistribution\DeliveryOptimization",
                     @"C:\Windows\ServiceProfiles\NetworkService\AppData\Local\Microsoft\Windows\DeliveryOptimization"

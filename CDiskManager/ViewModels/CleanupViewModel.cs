@@ -93,6 +93,23 @@ public partial class CleanupViewModel : ObservableObject
 
     public bool HasSelection => Categories.Any(c => c.IsSelected && c.Size > 0);
 
+    public List<CleanupCategory> SelectedSystemCategories =>
+        Categories.Where(c => c.IsSelected && c.Size > 0 && c.IsSystemLevel).ToList();
+
+    public string SelectedRiskWarningText
+    {
+        get
+        {
+            var warnings = SelectedSystemCategories
+                .Select(c => $"「{c.Name}」: {c.WarningText}")
+                .ToList();
+
+            return warnings.Count == 0
+                ? ""
+                : "所选项目包含系统级目录:\n" + string.Join("\n", warnings);
+        }
+    }
+
     public async Task<long> CleanSelectedAsync()
     {
         if (IsBusy) return 0;

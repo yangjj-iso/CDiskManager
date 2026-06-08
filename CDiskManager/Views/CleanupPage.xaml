@@ -101,10 +101,24 @@
                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
 
                         <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
-                            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/>
+                                <Border Padding="6,1" CornerRadius="4"
+                                        Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
+                                        Visibility="{x:Bind RiskLabel, Mode=OneWay, Converter={StaticResource EmptyToVisibility}}">
+                                    <TextBlock Text="{x:Bind RiskLabel}"
+                                               FontSize="11"
+                                               Foreground="{ThemeResource SystemFillColorCautionBrush}"/>
+                                </Border>
+                            </StackPanel>
                             <TextBlock Text="{x:Bind Description}"
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <TextBlock Text="{x:Bind WarningText}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                       TextWrapping="Wrap"
+                                       Visibility="{x:Bind WarningText, Mode=OneWay, Converter={StaticResource EmptyToVisibility}}"/>
                             <TextBlock Text="{x:Bind StatusDetail, Mode=OneWay}"
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
