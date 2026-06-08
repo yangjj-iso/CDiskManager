@@ -22,6 +22,11 @@ public sealed partial class LargeFilesPage : Page
             ViewModel.OpenInExplorerCommand.Execute(item);
     }
 
+    private void FilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        ViewModel.UpdateSelectionSummary(FilesList.SelectedItems.OfType<FileItem>());
+    }
+
     private async void DeleteOne_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         if (sender is Button { Tag: FileItem item })
@@ -63,7 +68,11 @@ public sealed partial class LargeFilesPage : Page
         };
 
         if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
             ViewModel.DeleteFiles(items);
+            FilesList.SelectedItems.Clear();
+            ViewModel.UpdateSelectionSummary([]);
+        }
     }
 
     private async Task ShowMessageAsync(string title, string message)

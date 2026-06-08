@@ -136,6 +136,28 @@ public sealed class ServiceSmokeTests : IDisposable
         Assert.False(Directory.Exists(target));
     }
 
+    [Fact]
+    public void FileOperationServiceDeletesExistingFilesAndReportsFailures()
+    {
+        var existingPath = Path.Combine(_root, "delete-me.bin");
+        var missingPath = Path.Combine(_root, "missing.bin");
+        WriteBytes(existingPath, 1024, 6);
+
+        var items = new[]
+        {
+            new FileItem { Name = "delete-me.bin", FullPath = existingPath, Size = 1024 },
+            new FileItem { Name = "missing.bin", FullPath = missingPath, Size = 2048 }
+        };
+
+        var result = new FileOperationService().DeleteFiles(items, useRecycleBin: false);
+
+        Assert.Equal(1, result.DeletedCount);
+        Assert.Equal(1, result.FailedCount);
+        Assert.Equal(1024, result.ReclaimedBytes);
+        Assert.False(File.Exists(existingPath));
+        Assert.Contains("missing.bin", result.FailedSummary);
+    }
+
     [Theory]
     [InlineData("Images          7          2         1.09GB    769.2MB (70%)", 769_200_000L)]
     [InlineData("Build Cache     42         42        2.4GiB    1.2GiB (50%)", 1_288_490_188L)]

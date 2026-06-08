@@ -23,6 +23,11 @@ public partial class LargeFilesViewModel : ObservableObject
     [ObservableProperty] private string _currentPath = "";
     [ObservableProperty] private string? _selectedDrive;
     [ObservableProperty] private string _resultSummary = "";
+    [ObservableProperty] private string _selectionSummary = "未选择文件";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelection))]
+    private int _selectedFileCount;
+    [ObservableProperty] private long _selectedBytes;
     [ObservableProperty] private int _scannedFolderCount;
 
     public ObservableCollection<string> AvailableDrives { get; } = [];
@@ -30,6 +35,7 @@ public partial class LargeFilesViewModel : ObservableObject
 
     public bool HasResults => LargeFiles.Count > 0;
     public bool ShowEmptyState => !IsScanning && LargeFiles.Count == 0;
+    public bool HasSelection => SelectedFileCount > 0;
 
     public LargeFilesViewModel()
     {
@@ -63,6 +69,7 @@ public partial class LargeFilesViewModel : ObservableObject
         IsScanning = true;
         LargeFiles.Clear();
         ResultSummary = "";
+        UpdateSelectionSummary([]);
         CurrentPath = "";
         ScannedFolderCount = 0;
         StatusText = "正在扫描...";
@@ -143,4 +150,14 @@ public partial class LargeFilesViewModel : ObservableObject
     }
 
     public bool UseRecycleBin => _settings.Current.UseRecycleBin;
+
+    public void UpdateSelectionSummary(IEnumerable<FileItem> selectedItems)
+    {
+        var selected = selectedItems.ToList();
+        SelectedFileCount = selected.Count;
+        SelectedBytes = selected.Sum(i => i.Size);
+        SelectionSummary = selected.Count == 0
+            ? "未选择文件"
+            : $"已选择 {selected.Count:N0} 个文件 · 预计释放 {Helpers.FileSizeHelper.Format(SelectedBytes)}";
+    }
 }
