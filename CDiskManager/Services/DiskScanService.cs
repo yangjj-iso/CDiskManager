@@ -18,11 +18,13 @@ public class DiskScanService
     {
         var root = new FolderNode { Name = path, FullPath = path, Depth = 0 };
         var counter = new ScanCounter();
-        await Task.Run(() => ScanFolder(root, counter, progress, ct), ct);
+        var reporter = new ScanProgressReporter(progress);
+        await Task.Run(() => ScanFolder(root, counter, reporter, ct), ct);
+        reporter.Report(counter, root.FullPath, force: true);
         return root;
     }
 
-    private void ScanFolder(FolderNode node, ScanCounter counter, IProgress<ScanProgress>? progress, CancellationToken ct)
+    private void ScanFolder(FolderNode node, ScanCounter counter, ScanProgressReporter progress, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -58,8 +60,7 @@ public class DiskScanService
                 node.Size += child.Size;
                 node.FileCount += child.FileCount;
 
-                // Throttle UI updates to one per directory completion.
-                progress?.Report(new ScanProgress(counter.Files, counter.Bytes, dir.FullName));
+                progress.Report(counter, dir.FullName);
                 ct.ThrowIfCancellationRequested();
             }
 
@@ -162,6 +163,24 @@ public sealed class ScanCounter
 {
     public int Files;
     public long Bytes;
+}
+
+internal sealed class ScanProgressReporter(IProgress<ScanProgress>? progress, int minIntervalMs = 180)
+{
+    private readonly TimeSpan _minInterval = TimeSpan.FromMilliseconds(minIntervalMs);
+    private DateTime _lastReportUtc = DateTime.MinValue;
+
+    public void Report(ScanCounter counter, string currentPath, bool force = false)
+    {
+        if (progress == null) return;
+
+        var now = DateTime.UtcNow;
+        if (!force && _lastReportUtc != DateTime.MinValue && now - _lastReportUtc < _minInterval)
+            return;
+
+        _lastReportUtc = now;
+        progress.Report(new ScanProgress(counter.Files, counter.Bytes, currentPath));
+    }
 }
 
 public readonly record struct ScanProgress(int FileCount, long BytesScanned, string CurrentPath)

@@ -59,6 +59,25 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public void DiskScanProgressReporterThrottlesRapidUpdatesButKeepsFinalReport()
+    {
+        var progress = new RecordingScanProgress();
+        var reporter = new ScanProgressReporter(progress, minIntervalMs: 10_000);
+        var counter = new ScanCounter { Files = 1, Bytes = 1024 };
+
+        reporter.Report(counter, "first");
+        counter.Files = 2;
+        counter.Bytes = 2048;
+        reporter.Report(counter, "second");
+        reporter.Report(counter, "final", force: true);
+
+        Assert.Equal(2, progress.Reports.Count);
+        Assert.Equal("first", progress.Reports[0].CurrentPath);
+        Assert.Equal("final", progress.Reports[1].CurrentPath);
+        Assert.Equal(2, progress.Reports[1].FileCount);
+    }
+
+    [Fact]
     public async Task DiskScanChildViewIncludesFoldersAndImmediateFiles()
     {
         WriteBytes(Path.Combine(_root, "folder", "inside.bin"), 4096, 1);
@@ -461,5 +480,12 @@ public sealed class ServiceSmokeTests : IDisposable
     private sealed class CancelScanProgress(CancellationTokenSource cts) : IProgress<ScanProgress>
     {
         public void Report(ScanProgress value) => cts.Cancel();
+    }
+
+    private sealed class RecordingScanProgress : IProgress<ScanProgress>
+    {
+        public List<ScanProgress> Reports { get; } = [];
+
+        public void Report(ScanProgress value) => Reports.Add(value);
     }
 }
