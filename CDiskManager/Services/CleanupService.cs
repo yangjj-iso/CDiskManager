@@ -92,26 +92,39 @@ public class CleanupService
         }, ct);
     }
 
-    public async Task<long> CleanAsync(CleanupCategory category, IProgress<string>? progress = null, CancellationToken ct = default)
+    public async Task<CleanupResult> CleanAsync(CleanupCategory category, IProgress<string>? progress = null, CancellationToken ct = default)
     {
         if (category.Kind == CleanupKind.RecycleBin)
         {
             return await Task.Run(() =>
             {
                 long size = GetRecycleBinSize();
-                NativeHelper.EmptyRecycleBin();
+                var result = new CleanupResult();
+                if (NativeHelper.EmptyRecycleBin())
+                {
+                    result.CleanedBytes = size;
+                    result.DeletedFiles = size > 0 ? 1 : 0;
+                }
+                else
+                {
+                    result.FailedFiles = size > 0 ? 1 : 0;
+                }
                 progress?.Report("回收站");
-                return size;
+                return result;
             }, ct);
         }
 
         return await Task.Run(() =>
         {
-            long cleaned = 0;
+            var result = new CleanupResult();
             foreach (var path in category.Paths)
             {
                 ct.ThrowIfCancellationRequested();
-                if (!Directory.Exists(path)) continue;
+                if (!Directory.Exists(path))
+                {
+                    result.MissingPaths.Add(path);
+                    continue;
+                }
 
                 // Delete files first.
                 foreach (var file in SafeEnumerateFiles(path))
@@ -123,10 +136,15 @@ public class CleanupService
                         var size = info.Length;
                         info.Attributes = FileAttributes.Normal;
                         info.Delete();
-                        cleaned += size;
+                        result.CleanedBytes += size;
+                        result.DeletedFiles++;
                         progress?.Report(file);
                     }
-                    catch { }
+                    catch
+                    {
+                        result.FailedFiles++;
+                        result.FailedPaths.Add(file);
+                    }
                 }
 
                 // Then remove now-empty sub-directories (but keep the category root).
@@ -135,7 +153,7 @@ public class CleanupService
                     try { Directory.Delete(dir, false); } catch { }
                 }
             }
-            return cleaned;
+            return result;
         }, ct);
     }
 
@@ -198,4 +216,13 @@ public class CleanupService
             Path.Combine(appData, @"Mozilla\Firefox\Profiles")
         ];
     }
+}
+
+public sealed class CleanupResult
+{
+    public long CleanedBytes { get; set; }
+    public int DeletedFiles { get; set; }
+    public int FailedFiles { get; set; }
+    public List<string> MissingPaths { get; } = [];
+    public List<string> FailedPaths { get; } = [];
 }

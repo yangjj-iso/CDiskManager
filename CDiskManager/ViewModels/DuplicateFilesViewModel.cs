@@ -12,27 +12,37 @@ public partial class DuplicateFilesViewModel : ObservableObject
     private readonly DuplicateDetector _detector;
     private readonly PartitionAnalyzer _analyzer;
     private readonly SettingsService _settings;
+    private readonly FileOperationService _fileOperations;
     private CancellationTokenSource? _cts;
 
-    [ObservableProperty] private bool _isScanning;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
+    private bool _isScanning;
     [ObservableProperty] private string _statusText = "扫描指定分区中内容完全相同的重复文件";
     [ObservableProperty] private int _scannedCount;
     [ObservableProperty] private string _currentPath = "";
     [ObservableProperty] private double _minSizeMB = 1;
     [ObservableProperty] private string? _selectedDrive;
     [ObservableProperty] private string _totalWaste = "";
+    [ObservableProperty] private string _resultSummary = "";
 
     public ObservableCollection<string> AvailableDrives { get; } = [];
     public ObservableCollection<DuplicateGroup> DuplicateGroups { get; } = [];
 
     public bool HasResults => DuplicateGroups.Count > 0;
+    public bool ShowEmptyState => !IsScanning && DuplicateGroups.Count == 0;
 
     public DuplicateFilesViewModel()
     {
         _detector = App.Services.GetRequiredService<DuplicateDetector>();
         _analyzer = App.Services.GetRequiredService<PartitionAnalyzer>();
         _settings = App.Services.GetRequiredService<SettingsService>();
-        DuplicateGroups.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasResults));
+        _fileOperations = App.Services.GetRequiredService<FileOperationService>();
+        DuplicateGroups.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(HasResults));
+            OnPropertyChanged(nameof(ShowEmptyState));
+        };
 
         foreach (var p in _analyzer.GetPartitions())
             AvailableDrives.Add(p.DriveLetter + "\\");
@@ -52,6 +62,8 @@ public partial class DuplicateFilesViewModel : ObservableObject
         IsScanning = true;
         DuplicateGroups.Clear();
         ScannedCount = 0;
+        TotalWaste = "";
+        ResultSummary = "";
         StatusText = "正在扫描...";
 
         try
@@ -87,6 +99,9 @@ public partial class DuplicateFilesViewModel : ObservableObject
             }
 
             TotalWaste = Helpers.FileSizeHelper.Format(waste);
+            ResultSummary = DuplicateGroups.Count > 0
+                ? $"{DuplicateGroups.Count} 组 · 预计可释放 {TotalWaste}"
+                : "";
             CurrentPath = "";
             StatusText = DuplicateGroups.Count > 0
                 ? $"找到 {DuplicateGroups.Count} 组重复文件，可释放约 {TotalWaste}"
@@ -108,16 +123,17 @@ public partial class DuplicateFilesViewModel : ObservableObject
     /// <summary>Deletes the supplied duplicate files (to Recycle Bin or permanently per settings). Returns bytes reclaimed.</summary>
     public long DeleteFiles(IEnumerable<FileItem> items)
     {
-        bool useBin = _settings.Current.UseRecycleBin;
-        long reclaimed = 0;
-        foreach (var item in items.ToList())
+        var validation = ValidateDeleteSelection(items);
+        if (!validation.CanDelete)
         {
-            bool ok = useBin
-                ? Helpers.NativeHelper.MoveToRecycleBin(item.FullPath)
-                : TryDeletePermanent(item.FullPath);
-            if (!ok) continue;
-            reclaimed += item.Size;
+            StatusText = validation.Message;
+            return 0;
+        }
 
+        bool useBin = _settings.Current.UseRecycleBin;
+        var result = _fileOperations.DeleteFiles(validation.AllowedFiles, useBin);
+        foreach (var item in result.DeletedFiles)
+        {
             foreach (var group in DuplicateGroups.ToList())
             {
                 if (group.Files.Remove(item))
@@ -128,32 +144,27 @@ public partial class DuplicateFilesViewModel : ObservableObject
                 }
             }
         }
+
+        var failureText = result.FailedCount > 0
+            ? $"，{result.FailedCount} 个文件删除失败"
+            : "";
+
         StatusText = useBin
-            ? $"已将重复文件移入回收站，释放 {Helpers.FileSizeHelper.Format(reclaimed)}"
-            : $"已永久删除重复文件，释放 {Helpers.FileSizeHelper.Format(reclaimed)}";
-        return reclaimed;
+            ? $"已将 {result.DeletedCount} 个重复文件移入回收站，释放 {Helpers.FileSizeHelper.Format(result.ReclaimedBytes)}{failureText}"
+            : $"已永久删除 {result.DeletedCount} 个重复文件，释放 {Helpers.FileSizeHelper.Format(result.ReclaimedBytes)}{failureText}";
+        TotalWaste = Helpers.FileSizeHelper.Format(DuplicateGroups.Sum(g => g.UnitSize * Math.Max(0, g.Files.Count - 1)));
+        ResultSummary = DuplicateGroups.Count > 0
+            ? $"{DuplicateGroups.Count} 组 · 预计可释放 {TotalWaste}"
+            : "";
+        return result.ReclaimedBytes;
     }
 
     public bool UseRecycleBin => _settings.Current.UseRecycleBin;
 
-    private static bool TryDeletePermanent(string path)
-    {
-        try { File.Delete(path); return true; }
-        catch { return false; }
-    }
-
     /// <summary>All files currently marked selected across every group.</summary>
     public List<FileItem> GetSelectedFiles()
         => DuplicateGroups.SelectMany(g => g.Files).Where(f => f.IsSelected).ToList();
-}
 
-public class DuplicateGroup
-{
-    public ObservableCollection<FileItem> Files { get; set; } = [];
-    public long UnitSize { get; set; }
-    public int Count { get; set; }
-    public string TotalWaste { get; set; } = "";
-
-    public string UnitSizeFormatted => Helpers.FileSizeHelper.Format(UnitSize);
-    public string Header => $"{Count} 个相同文件 · 单个 {UnitSizeFormatted}";
+    public DuplicateDeleteValidation ValidateDeleteSelection(IEnumerable<FileItem> selectedItems)
+        => DuplicateDeleteGuard.Validate(DuplicateGroups, selectedItems);
 }

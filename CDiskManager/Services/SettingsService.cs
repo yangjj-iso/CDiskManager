@@ -45,6 +45,7 @@ public class SettingsService
                 var json = File.ReadAllText(SettingsPath);
                 Current = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
             }
+            Normalize();
         }
         catch
         {
@@ -56,6 +57,7 @@ public class SettingsService
     {
         try
         {
+            Normalize();
             Directory.CreateDirectory(SettingsDir);
             var json = JsonSerializer.Serialize(Current, JsonOptions);
             File.WriteAllText(SettingsPath, json);
@@ -64,5 +66,35 @@ public class SettingsService
         {
             // Settings persistence is best-effort; ignore IO failures.
         }
+    }
+
+    private void Normalize()
+    {
+        Current.Theme = Current.Theme switch
+        {
+            "Light" or "Dark" or "Default" => Current.Theme,
+            _ => "Default"
+        };
+
+        Current.DefaultScanDrive = NormalizeDrive(Current.DefaultScanDrive);
+        Current.LargeFileMinMB = Clamp(Current.LargeFileMinMB, 1, 1_000_000);
+        Current.DuplicateMinMB = Clamp(Current.DuplicateMinMB, 0.1, 100_000);
+    }
+
+    private static string NormalizeDrive(string? drive)
+    {
+        if (string.IsNullOrWhiteSpace(drive)) return @"C:\";
+
+        var value = drive.Trim();
+        if (value.Length == 2 && value[1] == ':')
+            return value + "\\";
+
+        return value.EndsWith('\\') ? value : value + "\\";
+    }
+
+    private static double Clamp(double value, double min, double max)
+    {
+        if (double.IsNaN(value) || double.IsInfinity(value)) return min;
+        return Math.Clamp(value, min, max);
     }
 }

@@ -22,7 +22,14 @@ public sealed partial class DashboardPage : Page
 
     private void Refresh_Click(object sender, RoutedEventArgs e) => ViewModel.LoadCommand.Execute(null);
 
-    private void GoToScan(object sender, RoutedEventArgs e) => Frame.Navigate(typeof(DiskScanPage));
-    private void GoToCleanup(object sender, RoutedEventArgs e) => Frame.Navigate(typeof(CleanupPage));
-    private void GoToLargeFiles(object sender, RoutedEventArgs e) => Frame.Navigate(typeof(LargeFilesPage));
+    private void GoToScan(object sender, RoutedEventArgs e) => Navigate("DiskScan");
+    private void GoToCleanup(object sender, RoutedEventArgs e) => Navigate("Cleanup");
+    private void GoToLargeFiles(object sender, RoutedEventArgs e) => Navigate("LargeFiles");
+    private void GoToDuplicateFiles(object sender, RoutedEventArgs e) => Navigate("DuplicateFiles");
+
+    private static void Navigate(string tag)
+    {
+        if (App.MainWindow is MainWindow mainWindow)
+            mainWindow.NavigateTo(tag);
+    }
 }

@@ -13,26 +13,32 @@ public partial class CleanupViewModel : ObservableObject
 
     [ObservableProperty] private bool _isScanning;
     [ObservableProperty] private bool _isCleaning;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsBusy))]
-    private bool _busy;
-
     [ObservableProperty] private string _statusText = "点击「扫描」检测可清理的垃圾文件";
     [ObservableProperty] private string _totalCleanable = "0 B";
     [ObservableProperty] private double _cleanProgress;
 
     public bool IsBusy => IsScanning || IsCleaning;
+    public bool ShowEmptyState => !IsBusy && Categories.Count == 0;
 
     public ObservableCollection<CleanupCategory> Categories { get; } = [];
 
     public CleanupViewModel()
     {
         _cleanupService = App.Services.GetRequiredService<CleanupService>();
+        Categories.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ShowEmptyState));
     }
 
-    partial void OnIsScanningChanged(bool value) => OnPropertyChanged(nameof(IsBusy));
-    partial void OnIsCleaningChanged(bool value) => OnPropertyChanged(nameof(IsBusy));
+    partial void OnIsScanningChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsBusy));
+        OnPropertyChanged(nameof(ShowEmptyState));
+    }
+
+    partial void OnIsCleaningChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsBusy));
+        OnPropertyChanged(nameof(ShowEmptyState));
+    }
 
     [RelayCommand]
     private async Task ScanAsync()
@@ -42,34 +48,43 @@ public partial class CleanupViewModel : ObservableObject
         StatusText = "正在扫描可清理项...";
         Categories.Clear();
 
-        var categories = _cleanupService.GetCategories();
-        foreach (var cat in categories)
+        try
         {
-            cat.IsCalculating = true;
-            Categories.Add(cat);
-        }
+            var categories = _cleanupService.GetCategories();
+            foreach (var cat in categories)
+            {
+                cat.IsCalculating = true;
+                cat.DeletedFileCount = 0;
+                cat.FailedFileCount = 0;
+                cat.StatusDetail = "";
+                Categories.Add(cat);
+            }
 
-        long total = 0;
-        foreach (var cat in Categories)
+            long total = 0;
+            foreach (var cat in Categories)
+            {
+                try
+                {
+                    var size = await _cleanupService.CalculateCategorySizeAsync(cat);
+                    total += size;
+                    cat.IsSelected = size > 0;
+                }
+                catch { }
+                finally
+                {
+                    cat.IsCalculating = false;
+                }
+                TotalCleanable = Helpers.FileSizeHelper.Format(total);
+            }
+
+            StatusText = total > 0
+                ? $"扫描完成，可清理 {TotalCleanable}"
+                : "未发现可清理的垃圾文件";
+        }
+        finally
         {
-            try
-            {
-                var size = await _cleanupService.CalculateCategorySizeAsync(cat);
-                total += size;
-                cat.IsSelected = size > 0;
-            }
-            catch { }
-            finally
-            {
-                cat.IsCalculating = false;
-            }
-            TotalCleanable = Helpers.FileSizeHelper.Format(total);
+            IsScanning = false;
         }
-
-        StatusText = total > 0
-            ? $"扫描完成，可清理 {TotalCleanable}"
-            : "未发现可清理的垃圾文件";
-        IsScanning = false;
     }
 
     /// <summary>Sum of selected, non-empty categories.</summary>
@@ -85,28 +100,64 @@ public partial class CleanupViewModel : ObservableObject
         CleanProgress = 0;
         long totalCleaned = 0;
 
-        var selected = Categories.Where(c => c.IsSelected && c.Size > 0).ToList();
-        int done = 0;
-
-        foreach (var cat in selected)
+        try
         {
-            StatusText = $"正在清理: {cat.Name}...";
-            try
+            var selected = Categories.Where(c => c.IsSelected && c.Size > 0).ToList();
+            int done = 0;
+
+            foreach (var cat in selected)
             {
-                var cleaned = await _cleanupService.CleanAsync(cat);
-                totalCleaned += cleaned;
-                cat.Size = 0;
-                cat.IsSelected = false;
+                StatusText = $"正在清理: {cat.Name}...";
+                try
+                {
+                    var result = await _cleanupService.CleanAsync(cat);
+                    totalCleaned += result.CleanedBytes;
+                    cat.DeletedFileCount = result.DeletedFiles;
+                    cat.FailedFileCount = result.FailedFiles;
+                    cat.Size = Math.Max(0, cat.Size - result.CleanedBytes);
+                    cat.IsSelected = false;
+                    cat.StatusDetail = BuildStatusDetail(result);
+                }
+                catch (Exception ex)
+                {
+                    cat.FailedFileCount++;
+                    cat.StatusDetail = $"清理失败: {ex.Message}";
+                }
+
+                done++;
+                CleanProgress = selected.Count > 0 ? (double)done / selected.Count * 100 : 100;
             }
-            catch { }
 
-            done++;
-            CleanProgress = (double)done / selected.Count * 100;
+            TotalCleanable = Helpers.FileSizeHelper.Format(Categories.Sum(c => c.Size));
+            var failures = Categories.Sum(c => c.FailedFileCount);
+            StatusText = failures > 0
+                ? $"清理完成，已释放 {Helpers.FileSizeHelper.Format(totalCleaned)}，{failures:N0} 个文件未能删除"
+                : $"清理完成，已释放 {Helpers.FileSizeHelper.Format(totalCleaned)}";
+            return totalCleaned;
         }
+        finally
+        {
+            IsCleaning = false;
+        }
+    }
 
-        TotalCleanable = Helpers.FileSizeHelper.Format(Categories.Sum(c => c.Size));
-        StatusText = $"清理完成，已释放 {Helpers.FileSizeHelper.Format(totalCleaned)}";
-        IsCleaning = false;
-        return totalCleaned;
+    private static string BuildStatusDetail(CleanupResult result)
+    {
+        if (result.DeletedFiles == 0 && result.FailedFiles == 0 && result.MissingPaths.Count == 0)
+            return "没有可删除的文件";
+
+        var parts = new List<string>();
+        if (result.CleanedBytes > 0)
+            parts.Add($"释放 {Helpers.FileSizeHelper.Format(result.CleanedBytes)}");
+        if (result.DeletedFiles > 0)
+            parts.Add($"删除 {result.DeletedFiles:N0} 个文件");
+        if (result.FailedFiles > 0)
+            parts.Add($"{result.FailedFiles:N0} 个文件失败，通常是权限不足或文件正在使用");
+        if (result.MissingPaths.Count > 0)
+            parts.Add($"{result.MissingPaths.Count:N0} 个路径不存在");
+        if (result.FailedPaths.Count > 0)
+            parts.Add($"示例: {string.Join("；", result.FailedPaths.Take(2).Select(Path.GetFileName))}");
+
+        return string.Join("，", parts);
     }
 }

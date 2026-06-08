@@ -11,10 +11,11 @@ public static partial class NativeHelper
     public const uint SHERB_NOPROGRESSUI = 0x00000002;
     public const uint SHERB_NOSOUND = 0x00000004;
 
-    public static void EmptyRecycleBin()
+    public static bool EmptyRecycleBin()
     {
-        SHEmptyRecycleBinW(nint.Zero, nint.Zero,
+        var result = SHEmptyRecycleBinW(nint.Zero, nint.Zero,
             SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND);
+        return result == 0;
     }
 
     // --- Recycle-bin aware delete (SHFileOperation) ---

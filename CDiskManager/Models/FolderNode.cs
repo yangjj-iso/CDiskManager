@@ -8,15 +8,17 @@ public class FolderNode
     public List<FolderNode> Children { get; set; } = [];
     public int FileCount { get; set; }
     public int Depth { get; set; }
+    public bool IsFile { get; set; }
 
     /// <summary>Percentage of this node's size relative to its parent (set when building a view list).</summary>
     public double DisplayPercent { get; set; }
 
     public bool HasChildren => Children.Count > 0;
+    public bool IsDirectory => !IsFile;
 
     public string SizeFormatted => Helpers.FileSizeHelper.Format(Size);
 
-    public string Glyph => HasChildren ? "\uE8B7" : "\uE8A5"; // folder vs document
+    public string Glyph => IsDirectory ? "\uE8B7" : "\uE8A5"; // folder vs document
 
     public string PercentLabel => $"{DisplayPercent:F1}%";
 

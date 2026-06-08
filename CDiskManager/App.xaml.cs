@@ -59,6 +59,7 @@ public partial class App : Application
         services.AddSingleton<DuplicateDetector>();
         services.AddSingleton<PartitionAnalyzer>();
         services.AddSingleton<SettingsService>();
+        services.AddSingleton<FileOperationService>();
 
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<DiskScanViewModel>();

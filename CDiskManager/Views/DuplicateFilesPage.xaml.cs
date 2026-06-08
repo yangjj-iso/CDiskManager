@@ -31,13 +31,14 @@ public sealed partial class DuplicateFilesPage : Page
     private async void DeleteSelected_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         var items = ViewModel.GetSelectedFiles();
-        if (items.Count == 0)
+        var validation = ViewModel.ValidateDeleteSelection(items);
+        if (!validation.CanDelete)
         {
-            await ShowMessageAsync("未选择文件", "请勾选要删除的重复文件。每组建议至少保留一个。");
+            await ShowMessageAsync("无法删除", validation.Message);
             return;
         }
 
-        long total = items.Sum(i => i.Size);
+        long total = validation.AllowedFiles.Sum(i => i.Size);
         bool useBin = ViewModel.UseRecycleBin;
         var action = useBin ? "移入回收站" : "永久删除";
         var note = useBin ? "稍后可从回收站还原。" : "此操作不可撤销，文件将被永久删除。";
@@ -45,7 +46,7 @@ public sealed partial class DuplicateFilesPage : Page
         var dialog = new ContentDialog
         {
             Title = "确认删除重复文件",
-            Content = $"将 {items.Count} 个重复文件（共 {Helpers.FileSizeHelper.Format(total)}）{action}？\n{note}",
+            Content = $"将 {validation.AllowedFiles.Count} 个重复文件（共 {Helpers.FileSizeHelper.Format(total)}）{action}？\n每组至少会保留一个文件。\n{note}",
             PrimaryButtonText = action,
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Close,
@@ -53,7 +54,7 @@ public sealed partial class DuplicateFilesPage : Page
         };
 
         if (await dialog.ShowAsync() == ContentDialogResult.Primary)
-            ViewModel.DeleteFiles(items);
+            ViewModel.DeleteFiles(validation.AllowedFiles);
     }
 
     private async Task ShowMessageAsync(string title, string message)

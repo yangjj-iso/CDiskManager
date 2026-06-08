@@ -19,6 +19,7 @@ public partial class PartitionAdviceViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasSuggestions))]
     [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
     private bool _loaded;
+    [ObservableProperty] private string _summaryText = "";
 
     public ObservableCollection<PartitionInfo> Partitions { get; } = [];
     public ObservableCollection<MigrationSuggestion> Suggestions { get; } = [];
@@ -46,6 +47,7 @@ public partial class PartitionAdviceViewModel : ObservableObject
 
         Partitions.Clear();
         Suggestions.Clear();
+        SummaryText = "";
 
         foreach (var p in _analyzer.GetPartitions())
             Partitions.Add(p);
@@ -59,6 +61,9 @@ public partial class PartitionAdviceViewModel : ObservableObject
             StatusText = Suggestions.Count > 0
                 ? $"发现 {Suggestions.Count} 条迁移建议，合计可释放 {Helpers.FileSizeHelper.Format(suggestions.Sum(s => s.Size))}"
                 : "C 盘状态良好，暂无迁移建议";
+            SummaryText = Suggestions.Count > 0
+                ? $"{Suggestions.Count} 个用户文件夹可迁移 · 预计释放 {Helpers.FileSizeHelper.Format(suggestions.Sum(s => s.Size))}"
+                : "当前没有明显需要迁移的用户文件夹";
         }
         catch
         {

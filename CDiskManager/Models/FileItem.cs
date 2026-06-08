@@ -16,4 +16,7 @@ public partial class FileItem : ObservableObject
     public string SizeFormatted => Helpers.FileSizeHelper.Format(Size);
     public string LastModifiedFormatted => LastModified.ToString("yyyy-MM-dd HH:mm");
     public string DirectoryPath => System.IO.Path.GetDirectoryName(FullPath) ?? FullPath;
+    public string DuplicateActionText => IsSelected ? "待删除" : "保留";
+
+    partial void OnIsSelectedChanged(bool value) => OnPropertyChanged(nameof(DuplicateActionText));
 }

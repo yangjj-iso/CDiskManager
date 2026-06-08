@@ -14,12 +14,18 @@ public partial class DiskScanViewModel : ObservableObject
     private readonly SettingsService _settings;
     private CancellationTokenSource? _cts;
 
-    [ObservableProperty] private bool _isScanning;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
+    private bool _isScanning;
     [ObservableProperty] private string _statusText = "点击「开始扫描」分析磁盘空间占用";
     [ObservableProperty] private int _fileCount;
     [ObservableProperty] private string _bytesScanned = "";
     [ObservableProperty] private string _currentPath = "";
     [ObservableProperty] private string? _selectedDrive;
+    [ObservableProperty] private string _summaryTitle = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
+    private bool _hasScanResult;
 
     public ObservableCollection<string> AvailableDrives { get; } = [];
 
@@ -33,6 +39,7 @@ public partial class DiskScanViewModel : ObservableObject
     private FolderNode? _currentNode;
 
     public ObservableCollection<FolderNode> CurrentChildren { get; } = [];
+    public ObservableCollection<FolderNode> TopConsumers { get; } = [];
 
     /// <summary>Breadcrumb trail from root to the current node.</summary>
     public ObservableCollection<FolderNode> Breadcrumbs { get; } = [];
@@ -42,6 +49,8 @@ public partial class DiskScanViewModel : ObservableObject
     public string CurrentSizeText => CurrentNode != null
         ? $"{CurrentNode.SizeFormatted} · {CurrentNode.FileCount:N0} 个文件"
         : "";
+
+    public bool ShowEmptyState => !IsScanning && !HasScanResult;
 
     public DiskScanViewModel()
     {
@@ -70,6 +79,9 @@ public partial class DiskScanViewModel : ObservableObject
         FileCount = 0;
         BytesScanned = "";
         CurrentChildren.Clear();
+        TopConsumers.Clear();
+        HasScanResult = false;
+        SummaryTitle = "";
         Breadcrumbs.Clear();
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -86,6 +98,7 @@ public partial class DiskScanViewModel : ObservableObject
             CurrentNode = RootNode;
             RebuildBreadcrumbs();
             UpdateChildren();
+            HasScanResult = true;
             sw.Stop();
             StatusText = $"扫描完成 — 共 {FileCount:N0} 个文件，合计 {RootNode.SizeFormatted}，用时 {sw.Elapsed.TotalSeconds:F1} 秒";
             CurrentPath = "";
@@ -106,7 +119,7 @@ public partial class DiskScanViewModel : ObservableObject
     [RelayCommand]
     private void NavigateInto(FolderNode? folder)
     {
-        if (folder == null || !folder.HasChildren) return; // leaf files are not navigable
+        if (folder == null || folder.IsFile) return;
         CurrentNode = folder;
         RebuildBreadcrumbs();
         UpdateChildren();
@@ -139,22 +152,25 @@ public partial class DiskScanViewModel : ObservableObject
     private static void OpenInExplorer(FolderNode? node)
     {
         if (node == null) return;
-        try
-        {
-            if (node.HasChildren)
-                System.Diagnostics.Process.Start("explorer.exe", $"\"{node.FullPath}\"");
-            else
-                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{node.FullPath}\"");
-        }
-        catch { }
+        FileOperationService.OpenInExplorer(node.FullPath, node.IsFile);
     }
 
     private void UpdateChildren()
     {
         CurrentChildren.Clear();
+        TopConsumers.Clear();
         if (CurrentNode == null) return;
-        foreach (var child in _scanService.BuildChildView(CurrentNode))
+
+        var children = _scanService.BuildChildView(CurrentNode);
+        foreach (var child in children)
             CurrentChildren.Add(child);
+
+        foreach (var child in children.Where(c => c.Size > 0).Take(5))
+            TopConsumers.Add(child);
+
+        SummaryTitle = CurrentNode == RootNode
+            ? $"{CurrentNode.Name} 主要占用"
+            : $"当前目录主要占用: {CurrentNode.Name}";
         OnPropertyChanged(nameof(CurrentSizeText));
     }
 

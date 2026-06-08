@@ -90,7 +90,8 @@ public class DiskScanService
                         FullPath = file.FullName,
                         Size = file.Length,
                         FileCount = 0,
-                        Depth = node.Depth + 1
+                        Depth = node.Depth + 1,
+                        IsFile = true
                     });
                 }
                 catch { }

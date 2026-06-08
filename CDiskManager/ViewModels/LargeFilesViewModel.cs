@@ -12,25 +12,35 @@ public partial class LargeFilesViewModel : ObservableObject
     private readonly DiskScanService _scanService;
     private readonly PartitionAnalyzer _analyzer;
     private readonly SettingsService _settings;
+    private readonly FileOperationService _fileOperations;
     private CancellationTokenSource? _cts;
 
-    [ObservableProperty] private bool _isScanning;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
+    private bool _isScanning;
     [ObservableProperty] private string _statusText = "扫描指定分区中超过阈值大小的文件";
     [ObservableProperty] private double _minSizeMB = 100;
     [ObservableProperty] private string _currentPath = "";
     [ObservableProperty] private string? _selectedDrive;
+    [ObservableProperty] private string _resultSummary = "";
 
     public ObservableCollection<string> AvailableDrives { get; } = [];
     public ObservableCollection<FileItem> LargeFiles { get; } = [];
 
     public bool HasResults => LargeFiles.Count > 0;
+    public bool ShowEmptyState => !IsScanning && LargeFiles.Count == 0;
 
     public LargeFilesViewModel()
     {
         _scanService = App.Services.GetRequiredService<DiskScanService>();
         _analyzer = App.Services.GetRequiredService<PartitionAnalyzer>();
         _settings = App.Services.GetRequiredService<SettingsService>();
-        LargeFiles.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasResults));
+        _fileOperations = App.Services.GetRequiredService<FileOperationService>();
+        LargeFiles.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(HasResults));
+            OnPropertyChanged(nameof(ShowEmptyState));
+        };
 
         foreach (var p in _analyzer.GetPartitions())
             AvailableDrives.Add(p.DriveLetter + "\\");
@@ -51,6 +61,7 @@ public partial class LargeFilesViewModel : ObservableObject
         _cts = new CancellationTokenSource();
         IsScanning = true;
         LargeFiles.Clear();
+        ResultSummary = "";
         StatusText = "正在扫描...";
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -70,6 +81,9 @@ public partial class LargeFilesViewModel : ObservableObject
             StatusText = LargeFiles.Count > 0
                 ? $"找到 {LargeFiles.Count:N0} 个大文件（> {MinSizeMB:F0} MB），用时 {sw.Elapsed.TotalSeconds:F1} 秒"
                 : $"未找到大于 {MinSizeMB:F0} MB 的文件";
+            ResultSummary = LargeFiles.Count > 0
+                ? $"{LargeFiles.Count:N0} 个文件 · 合计 {Helpers.FileSizeHelper.Format(LargeFiles.Sum(f => f.Size))}"
+                : "";
         }
         catch (OperationCanceledException)
         {
@@ -88,41 +102,29 @@ public partial class LargeFilesViewModel : ObservableObject
     private static void OpenInExplorer(FileItem? item)
     {
         if (item == null) return;
-        try
-        {
-            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{item.FullPath}\"");
-        }
-        catch { }
+        FileOperationService.OpenInExplorer(item.FullPath);
     }
 
     /// <summary>Deletes the given files (to Recycle Bin or permanently per settings). Returns bytes reclaimed.</summary>
     public long DeleteFiles(IEnumerable<FileItem> items)
     {
         bool useBin = _settings.Current.UseRecycleBin;
-        long reclaimed = 0;
-        foreach (var item in items.ToList())
-        {
-            bool ok = useBin
-                ? Helpers.NativeHelper.MoveToRecycleBin(item.FullPath)
-                : TryDeletePermanent(item.FullPath);
+        var result = _fileOperations.DeleteFiles(items, useBin);
+        foreach (var item in result.DeletedFiles)
+            LargeFiles.Remove(item);
 
-            if (ok)
-            {
-                reclaimed += item.Size;
-                LargeFiles.Remove(item);
-            }
-        }
+        var failureText = result.FailedCount > 0
+            ? $"，{result.FailedCount} 个文件删除失败，{result.FailedSummary}"
+            : "";
+
         StatusText = useBin
-            ? $"已将文件移入回收站，释放 {Helpers.FileSizeHelper.Format(reclaimed)}"
-            : $"已永久删除文件，释放 {Helpers.FileSizeHelper.Format(reclaimed)}";
-        return reclaimed;
+            ? $"已将 {result.DeletedCount} 个文件移入回收站，释放 {Helpers.FileSizeHelper.Format(result.ReclaimedBytes)}{failureText}"
+            : $"已永久删除 {result.DeletedCount} 个文件，释放 {Helpers.FileSizeHelper.Format(result.ReclaimedBytes)}{failureText}";
+        ResultSummary = LargeFiles.Count > 0
+            ? $"{LargeFiles.Count:N0} 个文件 · 合计 {Helpers.FileSizeHelper.Format(LargeFiles.Sum(f => f.Size))}"
+            : "";
+        return result.ReclaimedBytes;
     }
 
     public bool UseRecycleBin => _settings.Current.UseRecycleBin;
-
-    private static bool TryDeletePermanent(string path)
-    {
-        try { File.Delete(path); return true; }
-        catch { return false; }
-    }
 }
