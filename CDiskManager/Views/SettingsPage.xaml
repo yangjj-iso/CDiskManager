@@ -116,6 +116,85 @@
                 </Grid>
             </Border>
 
+            <!-- Cache relocation -->
+            <TextBlock Text="缓存迁移" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,4,0,0"/>
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="16">
+                <StackPanel Spacing="14">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Grid.Column="0" Glyph="&#xE8B7;" FontSize="20" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="一键迁移用户级缓存" FontWeight="SemiBold"/>
+                            <TextBlock Text="将浏览器、开发工具和常见应用缓存迁移到目标盘，并在原路径创建目录联接"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <ComboBox MinWidth="110"
+                                      ItemsSource="{x:Bind ViewModel.AvailableDrives}"
+                                      SelectedItem="{x:Bind ViewModel.CacheTargetDrive, Mode=TwoWay}"/>
+                            <Button Content="刷新" Command="{x:Bind ViewModel.RefreshRelocatableCachesCommand}"/>
+                            <Button Content="迁移缓存" Click="RelocateCaches_Click"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    IsEnabled="{x:Bind ViewModel.CanRelocateCaches, Mode=OneWay}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <InfoBar IsOpen="True" IsClosable="False" Severity="Warning"
+                             Title="迁移前请关闭相关应用"
+                             Message="Chrome、Edge、VS Code、npm、pip、NuGet、Discord、Slack 等缓存可能被占用；迁移失败的项目会保留原路径。"/>
+
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{x:Bind ViewModel.CacheRelocationStatus, Mode=OneWay}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   TextWrapping="Wrap"/>
+                        <ProgressRing Grid.Column="1"
+                                      IsActive="{x:Bind ViewModel.IsRelocatingCaches, Mode=OneWay}"
+                                      Width="20" Height="20"/>
+                    </Grid>
+
+                    <ListView ItemsSource="{x:Bind ViewModel.RelocatableCaches, Mode=OneWay}"
+                              MaxHeight="180"
+                              SelectionMode="None">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Padding="4,6" ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SourcePath}"
+                                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding SizeFormatted}" HorizontalAlignment="Right" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding StatusText}"
+                                                   HorizontalAlignment="Right"
+                                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </StackPanel>
+            </Border>
+
             <!-- Actions -->
             <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
                 <Button Content="恢复默认设置" Command="{x:Bind ViewModel.ResetDefaultsCommand}"/>

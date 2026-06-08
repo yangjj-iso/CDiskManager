@@ -56,6 +56,8 @@ public partial class CleanupViewModel : ObservableObject
                 cat.IsCalculating = true;
                 cat.DeletedFileCount = 0;
                 cat.FailedFileCount = 0;
+                cat.MatchedPathCount = 0;
+                cat.ScannedFileCount = 0;
                 cat.StatusDetail = "";
                 Categories.Add(cat);
             }

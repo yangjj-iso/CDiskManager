@@ -60,6 +60,7 @@ public partial class App : Application
         services.AddSingleton<PartitionAnalyzer>();
         services.AddSingleton<SettingsService>();
         services.AddSingleton<FileOperationService>();
+        services.AddSingleton<CacheRelocationService>();
 
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<DiskScanViewModel>();

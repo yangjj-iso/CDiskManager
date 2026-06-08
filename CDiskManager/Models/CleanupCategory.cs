@@ -24,9 +24,14 @@ public partial class CleanupCategory : ObservableObject
     [ObservableProperty] private int _deletedFileCount;
     [ObservableProperty] private int _failedFileCount;
     [ObservableProperty] private string _statusDetail = "";
+    [ObservableProperty] private int _matchedPathCount;
+    [ObservableProperty] private int _scannedFileCount;
 
     public string SizeFormatted => Helpers.FileSizeHelper.Format(Size);
     public string RiskLabel => IsSystemLevel ? "系统级" : "";
+    public string ScanSummary => MatchedPathCount > 0
+        ? $"命中 {MatchedPathCount:N0} 个目录，扫描 {ScannedFileCount:N0} 个文件"
+        : "";
     public string DeletedSummary => DeletedFileCount > 0
         ? $"已删除 {DeletedFileCount:N0} 个文件"
         : "";
@@ -37,4 +42,6 @@ public partial class CleanupCategory : ObservableObject
     partial void OnSizeChanged(long value) => OnPropertyChanged(nameof(SizeFormatted));
     partial void OnDeletedFileCountChanged(int value) => OnPropertyChanged(nameof(DeletedSummary));
     partial void OnFailedFileCountChanged(int value) => OnPropertyChanged(nameof(FailedSummary));
+    partial void OnMatchedPathCountChanged(int value) => OnPropertyChanged(nameof(ScanSummary));
+    partial void OnScannedFileCountChanged(int value) => OnPropertyChanged(nameof(ScanSummary));
 }

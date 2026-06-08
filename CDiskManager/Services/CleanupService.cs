@@ -66,6 +66,13 @@ public class CleanupService
             },
             new CleanupCategory
             {
+                Name = "应用缓存",
+                Description = "常见桌面应用、开发工具与游戏平台缓存",
+                Glyph = "\uE8A5",
+                Paths = GetApplicationCachePaths()
+            },
+            new CleanupCategory
+            {
                 Name = "系统日志与崩溃转储",
                 Description = "Windows 日志文件与崩溃转储",
                 Glyph = "\uE9F9",
@@ -118,19 +125,25 @@ public class CleanupService
 
     public async Task<long> CalculateCategorySizeAsync(CleanupCategory category, CancellationToken ct = default)
     {
-        return await Task.Run(() =>
+        var stats = await Task.Run(() =>
         {
-            long total = category.Kind == CleanupKind.RecycleBin
-                ? GetRecycleBinSize()
-                : GetDirectoriesSize(
-                    category.Paths
-                        .SelectMany(ExpandPathPattern)
-                        .Distinct(StringComparer.OrdinalIgnoreCase),
-                    ct);
+            if (category.Kind == CleanupKind.RecycleBin)
+            {
+                var recycleBinSize = GetRecycleBinSize();
+                return new CleanupScanStats(recycleBinSize, recycleBinSize > 0 ? 1 : 0, 0);
+            }
 
-            category.Size = total;
-            return total;
+            return GetDirectoriesSize(
+                category.Paths
+                    .SelectMany(ExpandPathPattern)
+                    .Distinct(StringComparer.OrdinalIgnoreCase),
+                ct);
         }, ct);
+
+        category.MatchedPathCount = stats.MatchedPaths;
+        category.ScannedFileCount = stats.ScannedFiles;
+        category.Size = stats.Bytes;
+        return stats.Bytes;
     }
 
     public async Task<CleanupResult> CleanAsync(CleanupCategory category, IProgress<string>? progress = null, CancellationToken ct = default)
@@ -198,24 +211,28 @@ public class CleanupService
         }, ct);
     }
 
-    private static long GetDirectoriesSize(IEnumerable<string> paths, CancellationToken ct)
+    private static CleanupScanStats GetDirectoriesSize(IEnumerable<string> paths, CancellationToken ct)
     {
         long size = 0;
+        int matchedPaths = 0;
+        int scannedFiles = 0;
         var seenFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var path in paths)
         {
             ct.ThrowIfCancellationRequested();
             if (!Directory.Exists(path)) continue;
+            matchedPaths++;
 
             foreach (var file in SafeEnumerateFiles(path))
             {
                 ct.ThrowIfCancellationRequested();
                 if (!seenFiles.Add(file)) continue;
+                scannedFiles++;
                 try { size += new FileInfo(file).Length; } catch { }
             }
         }
 
-        return size;
+        return new CleanupScanStats(size, matchedPaths, scannedFiles);
     }
 
     private static IEnumerable<string> ExpandPathPattern(string path)
@@ -334,7 +351,54 @@ public class CleanupService
             Path.Combine(appData, @"Mozilla\Firefox\Profiles\*\startupCache")
         ];
     }
+
+    private static List<string> GetApplicationCachePaths()
+    {
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+        return
+        [
+            Path.Combine(localAppData, @"Microsoft\Teams\Cache"),
+            Path.Combine(localAppData, @"Microsoft\Teams\Code Cache"),
+            Path.Combine(localAppData, @"Microsoft\Teams\GPUCache"),
+            Path.Combine(localAppData, @"Microsoft\Teams\Service Worker\CacheStorage"),
+            Path.Combine(appData, @"Microsoft\Teams\Cache"),
+            Path.Combine(localAppData, @"Discord\Cache"),
+            Path.Combine(localAppData, @"Discord\Code Cache"),
+            Path.Combine(localAppData, @"Discord\GPUCache"),
+            Path.Combine(appData, @"discord\Cache"),
+            Path.Combine(localAppData, @"Slack\Cache"),
+            Path.Combine(localAppData, @"Slack\Code Cache"),
+            Path.Combine(localAppData, @"Slack\GPUCache"),
+            Path.Combine(appData, @"Slack\Service Worker\CacheStorage"),
+            Path.Combine(appData, @"Telegram Desktop\tdata\user_data\cache"),
+            Path.Combine(appData, @"Telegram Desktop\tdata\user_data\media_cache"),
+            Path.Combine(localAppData, @"Tencent\WeChat\XPlugin\*\Cache"),
+            Path.Combine(appData, @"Tencent\WeChat\XPlugin\*\Cache"),
+            Path.Combine(localAppData, @"Packages\*\LocalCache"),
+            Path.Combine(localAppData, @"Packages\*\LocalState\Cache"),
+            Path.Combine(localAppData, @"Packages\*\TempState"),
+            Path.Combine(appData, @"Code\Cache"),
+            Path.Combine(appData, @"Code\CachedData"),
+            Path.Combine(appData, @"Code\Code Cache"),
+            Path.Combine(appData, @"Code\GPUCache"),
+            Path.Combine(appData, @"npm-cache"),
+            Path.Combine(localAppData, @"pip\Cache"),
+            Path.Combine(localAppData, @"NuGet\v3-cache"),
+            Path.Combine(userProfile, @".gradle\caches"),
+            Path.Combine(userProfile, @".m2\repository"),
+            Path.Combine(localAppData, @"Steam\htmlcache"),
+            Path.Combine(appData, @"Spotify\Browser"),
+            Path.Combine(localAppData, @"Spotify\Storage"),
+            Path.Combine(localAppData, @"Postman\Cache"),
+            Path.Combine(appData, @"Postman\Cache")
+        ];
+    }
 }
+
+public readonly record struct CleanupScanStats(long Bytes, int MatchedPaths, int ScannedFiles);
 
 public sealed class CleanupResult
 {

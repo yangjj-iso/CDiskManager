@@ -119,6 +119,10 @@
                                        Foreground="{ThemeResource SystemFillColorCautionBrush}"
                                        TextWrapping="Wrap"
                                        Visibility="{x:Bind WarningText, Mode=OneWay, Converter={StaticResource EmptyToVisibility}}"/>
+                            <TextBlock Text="{x:Bind ScanSummary, Mode=OneWay}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Visibility="{x:Bind ScanSummary, Mode=OneWay, Converter={StaticResource EmptyToVisibility}}"/>
                             <TextBlock Text="{x:Bind StatusDetail, Mode=OneWay}"
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"

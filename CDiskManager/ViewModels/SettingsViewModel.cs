@@ -10,9 +10,11 @@ public partial class SettingsViewModel : ObservableObject
 {
     private readonly SettingsService _settings;
     private readonly PartitionAnalyzer _analyzer;
+    private readonly CacheRelocationService _cacheRelocation;
     private bool _loading;
 
     public ObservableCollection<string> AvailableDrives { get; } = [];
+    public ObservableCollection<Models.CacheRelocationItem> RelocatableCaches { get; } = [];
 
     public string[] ThemeOptions { get; } = ["跟随系统", "浅色", "深色"];
 
@@ -23,6 +25,11 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _useRecycleBin;
     [ObservableProperty] private string _statusText = "";
     [ObservableProperty] private string _version = "";
+    [ObservableProperty] private string? _cacheTargetDrive;
+    [ObservableProperty] private string _cacheRelocationStatus = "";
+    [ObservableProperty] private bool _isRelocatingCaches;
+
+    public bool CanRelocateCaches => !IsRelocatingCaches && !IsCDrive(CacheTargetDrive);
 
     /// <summary>Raised when the theme selection changes so the host window can apply it.</summary>
     public event Action<string>? ThemeChangeRequested;
@@ -31,6 +38,8 @@ public partial class SettingsViewModel : ObservableObject
     {
         _settings = App.Services.GetRequiredService<SettingsService>();
         _analyzer = App.Services.GetRequiredService<PartitionAnalyzer>();
+        _cacheRelocation = App.Services.GetRequiredService<CacheRelocationService>();
+        RelocatableCaches.CollectionChanged += (_, _) => UpdateCacheRelocationStatus();
         Load();
     }
 
@@ -47,6 +56,8 @@ public partial class SettingsViewModel : ObservableObject
         var s = _settings.Current;
         SelectedThemeIndex = s.Theme switch { "Light" => 1, "Dark" => 2, _ => 0 };
         SelectedDrive = AvailableDrives.Contains(s.DefaultScanDrive) ? s.DefaultScanDrive : AvailableDrives[0];
+        CacheTargetDrive = AvailableDrives.FirstOrDefault(d => !string.Equals(d, @"C:\", StringComparison.OrdinalIgnoreCase))
+            ?? AvailableDrives[0];
         LargeFileMinMB = s.LargeFileMinMB;
         DuplicateMinMB = s.DuplicateMinMB;
         UseRecycleBin = s.UseRecycleBin;
@@ -55,6 +66,7 @@ public partial class SettingsViewModel : ObservableObject
         Version = v != null ? $"v{v.Major}.{v.Minor}.{v.Build}" : "v1.0.0";
 
         _loading = false;
+        RefreshRelocatableCaches();
     }
 
     partial void OnSelectedThemeIndexChanged(int value)
@@ -95,6 +107,15 @@ public partial class SettingsViewModel : ObservableObject
         _settings.Save();
     }
 
+    partial void OnCacheTargetDriveChanged(string? value)
+    {
+        OnPropertyChanged(nameof(CanRelocateCaches));
+        if (_loading) return;
+        RefreshRelocatableCaches();
+    }
+
+    partial void OnIsRelocatingCachesChanged(bool value) => OnPropertyChanged(nameof(CanRelocateCaches));
+
     [RelayCommand]
     private void ResetDefaults()
     {
@@ -108,4 +129,58 @@ public partial class SettingsViewModel : ObservableObject
         ThemeChangeRequested?.Invoke("Default");
         StatusText = "已恢复默认设置";
     }
+
+    [RelayCommand]
+    private void RefreshRelocatableCaches()
+    {
+        if (string.IsNullOrWhiteSpace(CacheTargetDrive)) return;
+
+        RelocatableCaches.Clear();
+        foreach (var item in _cacheRelocation.GetRelocatableCaches(CacheTargetDrive))
+            RelocatableCaches.Add(item);
+        UpdateCacheRelocationStatus();
+    }
+
+    [RelayCommand]
+    public async Task RelocateCachesAsync()
+    {
+        if (!CanRelocateCaches || CacheTargetDrive == null) return;
+
+        IsRelocatingCaches = true;
+        CacheRelocationStatus = "正在迁移缓存...";
+        try
+        {
+            var progress = new Progress<string>(name => CacheRelocationStatus = $"正在迁移: {name}");
+            var result = await _cacheRelocation.RelocateUserCachesAsync(CacheTargetDrive, progress);
+            RefreshRelocatableCaches();
+            CacheRelocationStatus = result.FailedItems.Count > 0
+                ? $"{result.Summary}，失败示例: {string.Join("；", result.FailedItems.Take(3))}"
+                : result.Summary;
+        }
+        finally
+        {
+            IsRelocatingCaches = false;
+        }
+    }
+
+    private void UpdateCacheRelocationStatus()
+    {
+        if (RelocatableCaches.Count == 0)
+        {
+            CacheRelocationStatus = IsCDrive(CacheTargetDrive)
+                ? "请选择 C 盘以外的目标盘"
+                : "未发现可迁移的用户级缓存目录";
+            return;
+        }
+
+        var movable = RelocatableCaches.Where(i => !i.IsRelocated).ToList();
+        var total = movable.Sum(i => i.Size);
+        CacheRelocationStatus = IsCDrive(CacheTargetDrive)
+            ? "请选择 C 盘以外的目标盘"
+            : $"发现 {movable.Count:N0} 项可迁移缓存，约 {Helpers.FileSizeHelper.Format(total)}";
+    }
+
+    private static bool IsCDrive(string? drive)
+        => !string.IsNullOrWhiteSpace(drive)
+           && drive.Trim().StartsWith("C:", StringComparison.OrdinalIgnoreCase);
 }
