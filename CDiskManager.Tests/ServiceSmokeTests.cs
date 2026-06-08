@@ -46,6 +46,19 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public async Task DiskScanDoesNotSwallowCancellationRaisedByProgress()
+    {
+        WriteBytes(Path.Combine(_root, "cancel-disk", "child", "file.bin"), 4096, 13);
+        using var cts = new CancellationTokenSource();
+        var progress = new CancelScanProgress(cts);
+
+        var ex = await Record.ExceptionAsync(() =>
+            new DiskScanService().ScanAsync(_root, progress, cts.Token));
+
+        Assert.IsAssignableFrom<OperationCanceledException>(ex);
+    }
+
+    [Fact]
     public async Task DiskScanChildViewIncludesFoldersAndImmediateFiles()
     {
         WriteBytes(Path.Combine(_root, "folder", "inside.bin"), 4096, 1);
@@ -371,5 +384,10 @@ public sealed class ServiceSmokeTests : IDisposable
     private sealed class CancelDuplicateProgress(CancellationTokenSource cts) : IProgress<(int scanned, string current)>
     {
         public void Report((int scanned, string current) value) => cts.Cancel();
+    }
+
+    private sealed class CancelScanProgress(CancellationTokenSource cts) : IProgress<ScanProgress>
+    {
+        public void Report(ScanProgress value) => cts.Cancel();
     }
 }

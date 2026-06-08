@@ -60,6 +60,7 @@ public class DiskScanService
 
                 // Throttle UI updates to one per directory completion.
                 progress?.Report(new ScanProgress(counter.Files, counter.Bytes, dir.FullName));
+                ct.ThrowIfCancellationRequested();
             }
 
             node.Children.Sort((a, b) => b.Size.CompareTo(a.Size));

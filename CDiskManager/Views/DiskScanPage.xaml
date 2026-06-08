@@ -55,13 +55,19 @@
                             HorizontalAlignment="Right" VerticalAlignment="Center">
                     <ProgressRing IsActive="{x:Bind ViewModel.IsScanning, Mode=OneWay}"
                                   Width="22" Height="22"/>
-                    <TextBlock VerticalAlignment="Center"
+                    <TextBlock Text="{x:Bind ViewModel.FileCount, Mode=OneWay}"
+                               MinWidth="72"
+                               TextAlignment="Right"
+                               FontWeight="SemiBold"
+                               Visibility="{x:Bind ViewModel.IsScanning, Mode=OneWay, Converter={StaticResource EmptyToVisibility}}"/>
+                    <TextBlock Text="个文件"
                                Visibility="{x:Bind ViewModel.IsScanning, Mode=OneWay, Converter={StaticResource EmptyToVisibility}}"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}">
-                        <Run Text="{x:Bind ViewModel.FileCount, Mode=OneWay}"/>
-                        <Run Text=" 个文件 · "/>
-                        <Run Text="{x:Bind ViewModel.BytesScanned, Mode=OneWay}"/>
-                    </TextBlock>
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Text="{x:Bind ViewModel.BytesScanned, Mode=OneWay}"
+                               MinWidth="72"
+                               TextAlignment="Right"
+                               Visibility="{x:Bind ViewModel.IsScanning, Mode=OneWay, Converter={StaticResource EmptyToVisibility}}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -77,7 +83,7 @@
                     </DataTemplate>
                 </BreadcrumbBar.ItemTemplate>
             </BreadcrumbBar>
-            <TextBlock Text="{x:Bind ViewModel.CurrentPath, Mode=OneWay}"
+            <TextBlock Text="{x:Bind ViewModel.CurrentPathDisplay, Mode=OneWay}"
                        TextTrimming="CharacterEllipsis"
                        Style="{StaticResource CaptionTextBlockStyle}"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"

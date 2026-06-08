@@ -21,6 +21,7 @@ public partial class DiskScanViewModel : ObservableObject
     [ObservableProperty] private int _fileCount;
     [ObservableProperty] private string _bytesScanned = "";
     [ObservableProperty] private string _currentPath = "";
+    [ObservableProperty] private string _currentPathDisplay = "";
     [ObservableProperty] private string? _selectedDrive;
     [ObservableProperty] private string _summaryTitle = "";
     [ObservableProperty] private string _childFilterText = "";
@@ -82,6 +83,8 @@ public partial class DiskScanViewModel : ObservableObject
         StatusText = "正在扫描，请稍候...";
         FileCount = 0;
         BytesScanned = "";
+        CurrentPath = "";
+        CurrentPathDisplay = "";
         CurrentChildren.Clear();
         TopConsumers.Clear();
         HasScanResult = false;
@@ -99,6 +102,7 @@ public partial class DiskScanViewModel : ObservableObject
                 FileCount = p.FileCount;
                 BytesScanned = p.BytesFormatted;
                 CurrentPath = p.CurrentPath;
+                CurrentPathDisplay = BuildDisplayPath(root, p.CurrentPath);
             });
 
             RootNode = await _scanService.ScanAsync(root, progress, _cts.Token);
@@ -109,14 +113,19 @@ public partial class DiskScanViewModel : ObservableObject
             sw.Stop();
             StatusText = $"扫描完成 — 共 {FileCount:N0} 个文件，合计 {RootNode.SizeFormatted}，用时 {sw.Elapsed.TotalSeconds:F1} 秒";
             CurrentPath = "";
+            CurrentPathDisplay = "";
         }
         catch (OperationCanceledException)
         {
+            CurrentPath = "";
+            CurrentPathDisplay = "";
             StatusText = "扫描已取消";
         }
         finally
         {
             IsScanning = false;
+            _cts?.Dispose();
+            _cts = null;
         }
     }
 
@@ -245,5 +254,21 @@ public partial class DiskScanViewModel : ObservableObject
             if (found != null) return found;
         }
         return null;
+    }
+
+    private static string BuildDisplayPath(string root, string path)
+    {
+        var display = path;
+        try
+        {
+            var relative = Path.GetRelativePath(root, path);
+            if (!relative.StartsWith("..", StringComparison.Ordinal))
+                display = relative == "." ? root : relative;
+        }
+        catch { }
+
+        return display.Length <= 96
+            ? display
+            : "..." + display[^93..];
     }
 }
