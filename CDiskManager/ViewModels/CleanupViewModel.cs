@@ -62,6 +62,7 @@ public partial class CleanupViewModel : ObservableObject
                 cat.FailedFileCount = 0;
                 cat.MatchedPathCount = 0;
                 cat.ScannedFileCount = 0;
+                cat.SkippedPathCount = 0;
                 cat.StatusDetail = "";
                 AttachCategorySelectionTracking(cat);
                 Categories.Add(cat);
@@ -76,6 +77,7 @@ public partial class CleanupViewModel : ObservableObject
                     var stats = await _cleanupService.CalculateCategoryStatsAsync(cat, _cts.Token);
                     cat.MatchedPathCount = stats.MatchedPaths;
                     cat.ScannedFileCount = stats.ScannedFiles;
+                    cat.SkippedPathCount = stats.SkippedPaths;
                     cat.Size = stats.Bytes;
                     total += stats.Bytes;
                     cat.IsSelected = stats.Bytes > 0 && !cat.IsSystemLevel;
@@ -85,6 +87,12 @@ public partial class CleanupViewModel : ObservableObject
                         cat.StatusDetail = cat.Kind is CleanupKind.DockerPrune or CleanupKind.DockerVolumes
                             ? "Docker 未运行或没有可回收项目"
                             : "未命中已存在的缓存目录";
+                    }
+                    else if (stats.Bytes == 0 && stats.MatchedPaths > 0 && stats.ScannedFiles == 0)
+                    {
+                        cat.StatusDetail = stats.SkippedPaths > 0
+                            ? "命中了目录，但可访问文件为 0；部分目录因权限或占用被跳过"
+                            : "命中了目录，但里面没有可清理文件";
                     }
                 }
                 catch (Exception ex)

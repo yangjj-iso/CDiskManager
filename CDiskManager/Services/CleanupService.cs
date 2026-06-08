@@ -275,6 +275,7 @@ public class CleanupService
         long size = 0;
         int matchedPaths = 0;
         int scannedFiles = 0;
+        int skippedPaths = 0;
         var seenFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var path in paths)
         {
@@ -282,7 +283,7 @@ public class CleanupService
             if (!Directory.Exists(path)) continue;
             matchedPaths++;
 
-            foreach (var file in SafeEnumerateFiles(path))
+            foreach (var file in SafeEnumerateFiles(path, ct, () => skippedPaths++))
             {
                 ct.ThrowIfCancellationRequested();
                 if (!seenFiles.Add(file)) continue;
@@ -291,7 +292,7 @@ public class CleanupService
             }
         }
 
-        return new CleanupScanStats(size, matchedPaths, scannedFiles);
+        return new CleanupScanStats(size, matchedPaths, scannedFiles, skippedPaths);
     }
 
     private static IEnumerable<string> ExpandPathPattern(string path)
@@ -330,7 +331,7 @@ public class CleanupService
 
         if (!Directory.Exists(baseDir)) yield break;
 
-        foreach (var dir in Directory.EnumerateDirectories(baseDir, pattern))
+        foreach (var dir in SafeEnumerateChildDirectories(baseDir, pattern))
         {
             if (string.IsNullOrEmpty(suffix))
             {
@@ -451,23 +452,76 @@ public class CleanupService
         }
     }
 
-    private static readonly EnumerationOptions DeepOptions = new()
+    private static readonly EnumerationOptions ShallowOptions = new()
     {
         IgnoreInaccessible = true,
-        AttributesToSkip = FileAttributes.ReparsePoint,
-        RecurseSubdirectories = true
+        AttributesToSkip = FileAttributes.ReparsePoint
     };
 
-    private static IEnumerable<string> SafeEnumerateFiles(string path)
+    private static IEnumerable<string> SafeEnumerateFiles(
+        string path,
+        CancellationToken ct = default,
+        Action? skippedPath = null)
     {
-        try { return Directory.EnumerateFiles(path, "*", DeepOptions); }
-        catch { return []; }
+        var pending = new Stack<string>();
+        pending.Push(path);
+
+        while (pending.Count > 0)
+        {
+            ct.ThrowIfCancellationRequested();
+            var current = pending.Pop();
+
+            foreach (var file in SafeEnumerateFilesInDirectory(current, skippedPath))
+                yield return file;
+
+            foreach (var dir in SafeEnumerateChildDirectories(current, skippedPath: skippedPath))
+                pending.Push(dir);
+        }
     }
 
     private static IEnumerable<string> SafeEnumerateDirectories(string path)
     {
-        try { return Directory.EnumerateDirectories(path, "*", DeepOptions); }
-        catch { return []; }
+        var pending = new Stack<string>();
+        pending.Push(path);
+
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+            foreach (var dir in SafeEnumerateChildDirectories(current))
+            {
+                yield return dir;
+                pending.Push(dir);
+            }
+        }
+    }
+
+    private static IEnumerable<string> SafeEnumerateFilesInDirectory(string path, Action? skippedPath = null)
+    {
+        try
+        {
+            return Directory.EnumerateFiles(path, "*", ShallowOptions).ToList();
+        }
+        catch
+        {
+            skippedPath?.Invoke();
+            return [];
+        }
+    }
+
+    private static IEnumerable<string> SafeEnumerateChildDirectories(
+        string path,
+        string pattern = "*",
+        Action? skippedPath = null)
+    {
+        try
+        {
+            return Directory.EnumerateDirectories(path, pattern, ShallowOptions).ToList();
+        }
+        catch
+        {
+            skippedPath?.Invoke();
+            return [];
+        }
     }
 
     private static List<string> GetBrowserCachePaths()
@@ -587,7 +641,7 @@ public class CleanupService
     }
 }
 
-public readonly record struct CleanupScanStats(long Bytes, int MatchedPaths, int ScannedFiles);
+public readonly record struct CleanupScanStats(long Bytes, int MatchedPaths, int ScannedFiles, int SkippedPaths = 0);
 
 public readonly record struct DockerCommandResult(int ExitCode, string Output, string Error);
 

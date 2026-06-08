@@ -143,6 +143,21 @@ public sealed class ServiceSmokeTests : IDisposable
         Assert.Contains("volume", dockerVolumes.WarningText, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void CleanupCategoryScanSummaryShowsSkippedRestrictedPaths()
+    {
+        var category = new CleanupCategory
+        {
+            MatchedPathCount = 2,
+            ScannedFileCount = 3,
+            SkippedPathCount = 1
+        };
+
+        Assert.Contains("命中 2 个目录", category.ScanSummary);
+        Assert.Contains("扫描 3 个文件", category.ScanSummary);
+        Assert.Contains("跳过 1 个受限目录", category.ScanSummary);
+    }
+
     private static void WriteBytes(string path, int bytes, byte value)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
