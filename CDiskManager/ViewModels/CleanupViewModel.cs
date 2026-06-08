@@ -10,6 +10,7 @@ namespace CDiskManager.ViewModels;
 public partial class CleanupViewModel : ObservableObject
 {
     private readonly CleanupService _cleanupService;
+    private CancellationTokenSource? _cts;
 
     [ObservableProperty] private bool _isScanning;
     [ObservableProperty] private bool _isCleaning;
@@ -44,6 +45,7 @@ public partial class CleanupViewModel : ObservableObject
     private async Task ScanAsync()
     {
         if (IsBusy) return;
+        _cts = new CancellationTokenSource();
         IsScanning = true;
         StatusText = "正在扫描可清理项...";
         Categories.Clear();
@@ -65,9 +67,10 @@ public partial class CleanupViewModel : ObservableObject
             long total = 0;
             foreach (var cat in Categories)
             {
+                _cts.Token.ThrowIfCancellationRequested();
                 try
                 {
-                    var stats = await _cleanupService.CalculateCategoryStatsAsync(cat);
+                    var stats = await _cleanupService.CalculateCategoryStatsAsync(cat, _cts.Token);
                     cat.MatchedPathCount = stats.MatchedPaths;
                     cat.ScannedFileCount = stats.ScannedFiles;
                     cat.Size = stats.Bytes;
@@ -96,11 +99,20 @@ public partial class CleanupViewModel : ObservableObject
                 ? $"扫描完成，可清理 {TotalCleanable}"
                 : "未发现可清理的垃圾文件";
         }
+        catch (OperationCanceledException)
+        {
+            StatusText = "扫描已取消";
+        }
         finally
         {
             IsScanning = false;
+            _cts.Dispose();
+            _cts = null;
         }
     }
+
+    [RelayCommand]
+    private void Cancel() => _cts?.Cancel();
 
     /// <summary>Sum of selected, non-empty categories.</summary>
     public long SelectedBytes =>
@@ -128,6 +140,7 @@ public partial class CleanupViewModel : ObservableObject
     public async Task<long> CleanSelectedAsync()
     {
         if (IsBusy) return 0;
+        _cts = new CancellationTokenSource();
         IsCleaning = true;
         CleanProgress = 0;
         long totalCleaned = 0;
@@ -139,10 +152,11 @@ public partial class CleanupViewModel : ObservableObject
 
             foreach (var cat in selected)
             {
+                _cts.Token.ThrowIfCancellationRequested();
                 StatusText = $"正在清理: {cat.Name}...";
                 try
                 {
-                    var result = await _cleanupService.CleanAsync(cat);
+                    var result = await _cleanupService.CleanAsync(cat, ct: _cts.Token);
                     totalCleaned += result.CleanedBytes;
                     cat.DeletedFileCount = result.DeletedFiles;
                     cat.FailedFileCount = result.FailedFiles;
@@ -167,9 +181,16 @@ public partial class CleanupViewModel : ObservableObject
                 : $"清理完成，已释放 {Helpers.FileSizeHelper.Format(totalCleaned)}";
             return totalCleaned;
         }
+        catch (OperationCanceledException)
+        {
+            StatusText = $"清理已取消，已释放 {Helpers.FileSizeHelper.Format(totalCleaned)}";
+            return totalCleaned;
+        }
         finally
         {
             IsCleaning = false;
+            _cts.Dispose();
+            _cts = null;
         }
     }
 

@@ -203,6 +203,7 @@ public class CleanupService
         {
             return await Task.Run(() =>
             {
+                ct.ThrowIfCancellationRequested();
                 var stats = GetDockerStats(category.Kind);
                 var result = new CleanupResult();
                 var arguments = category.Kind == CleanupKind.DockerVolumes
@@ -210,6 +211,7 @@ public class CleanupService
                     : "system prune -af";
 
                 var command = RunDocker(arguments);
+                ct.ThrowIfCancellationRequested();
                 if (command.ExitCode == 0)
                 {
                     result.CleanedBytes = stats.Bytes;

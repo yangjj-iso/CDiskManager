@@ -40,6 +40,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Button Grid.Column="0" Content="扫描可清理项" Command="{x:Bind ViewModel.ScanCommand}"
@@ -47,7 +48,9 @@
                         IsEnabled="{x:Bind ViewModel.IsBusy, Mode=OneWay, Converter={StaticResource BoolNegation}}"/>
                 <Button Grid.Column="1" Content="清理勾选项" Click="Clean_Click"
                         IsEnabled="{x:Bind ViewModel.IsBusy, Mode=OneWay, Converter={StaticResource BoolNegation}}"/>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10"
+                <Button Grid.Column="2" Content="取消" Command="{x:Bind ViewModel.CancelCommand}"
+                        IsEnabled="{x:Bind ViewModel.IsBusy, Mode=OneWay}"/>
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="10"
                             HorizontalAlignment="Right" VerticalAlignment="Center">
                     <ProgressRing IsActive="{x:Bind ViewModel.IsScanning, Mode=OneWay}"
                                   Width="22" Height="22"/>
