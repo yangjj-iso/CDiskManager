@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using CDiskManager.Models;
 
 namespace CDiskManager.Services;
@@ -16,21 +18,88 @@ public sealed class CacheRelocationService
     {
         var targetRoot = BuildTargetRoot(targetDrive);
         return GetCacheDefinitions()
-            .Where(d => Directory.Exists(d.SourcePath) || Directory.Exists(Path.GetDirectoryName(d.SourcePath) ?? ""))
-            .Select(d =>
-            {
-                var targetPath = Path.Combine(targetRoot, d.SafeName);
-                var relocated = IsReparsePoint(d.SourcePath);
-                return new CacheRelocationItem
+            .SelectMany(d => ExpandSourcePaths(d.SourcePath)
+                .Select(sourcePath =>
                 {
-                    Name = d.Name,
-                    SourcePath = d.SourcePath,
-                    TargetPath = targetPath,
-                    IsRelocated = relocated,
-                    Size = Directory.Exists(d.SourcePath) && !relocated ? GetDirectorySize(d.SourcePath) : 0
-                };
-            })
+                    var targetPath = Path.Combine(targetRoot, MakeTargetName(d.SafeName, sourcePath));
+                    var relocated = IsReparsePoint(sourcePath);
+                    return new CacheRelocationItem
+                    {
+                        Name = d.Name,
+                        SourcePath = sourcePath,
+                        TargetPath = targetPath,
+                        IsRelocated = relocated,
+                        Size = Directory.Exists(sourcePath) && !relocated ? GetDirectorySize(sourcePath) : 0
+                    };
+                }))
+            .Where(i => Directory.Exists(i.SourcePath) || Directory.Exists(Path.GetDirectoryName(i.SourcePath) ?? ""))
+            .GroupBy(i => i.SourcePath, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
             .ToList();
+    }
+
+    private static IEnumerable<string> ExpandSourcePaths(string path)
+    {
+        if (!path.Contains('*')) return [path];
+
+        try
+        {
+            return ExpandSegments(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+                .Where(Directory.Exists)
+                .ToList();
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static IEnumerable<string> ExpandSegments(string path)
+    {
+        var wildcardIndex = path.IndexOf('*');
+        if (wildcardIndex < 0)
+        {
+            yield return path;
+            yield break;
+        }
+
+        var separatorBeforeWildcard = path.LastIndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], wildcardIndex);
+        if (separatorBeforeWildcard < 0) yield break;
+
+        var baseDir = path[..separatorBeforeWildcard];
+        var remainder = path[(separatorBeforeWildcard + 1)..];
+        var nextSeparator = remainder.IndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar]);
+        var pattern = nextSeparator >= 0 ? remainder[..nextSeparator] : remainder;
+        var suffix = nextSeparator >= 0 ? remainder[(nextSeparator + 1)..] : "";
+
+        if (!Directory.Exists(baseDir)) yield break;
+
+        foreach (var dir in Directory.EnumerateDirectories(baseDir, pattern))
+        {
+            if (string.IsNullOrEmpty(suffix))
+            {
+                yield return dir;
+                continue;
+            }
+
+            foreach (var expanded in ExpandSegments(Path.Combine(dir, suffix)))
+                yield return expanded;
+        }
+    }
+
+    private static string MakeTargetName(string safeName, string sourcePath)
+    {
+        var suffix = sourcePath
+            .Replace(Path.GetPathRoot(sourcePath) ?? "", "")
+            .Replace(Path.DirectorySeparatorChar, '_')
+            .Replace(Path.AltDirectorySeparatorChar, '_')
+            .Replace(' ', '_');
+
+        foreach (var invalid in Path.GetInvalidFileNameChars())
+            suffix = suffix.Replace(invalid, '_');
+
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(sourcePath)))[..12];
+        return $"{safeName}_{hash}";
     }
 
     public async Task<CacheRelocationResult> RelocateUserCachesAsync(string targetDrive, IProgress<string>? progress = null)
@@ -112,6 +181,7 @@ public sealed class CacheRelocationService
         var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
         return
         [
@@ -129,7 +199,48 @@ public sealed class CacheRelocationService
             new("Discord Cache", Path.Combine(local, @"Discord\Cache"), "Discord_Cache"),
             new("Slack Cache", Path.Combine(local, @"Slack\Cache"), "Slack_Cache"),
             new("Telegram Cache", Path.Combine(roaming, @"Telegram Desktop\tdata\user_data\cache"), "Telegram_Cache"),
-            new("Spotify Storage", Path.Combine(local, @"Spotify\Storage"), "Spotify_Storage")
+            new("Spotify Storage", Path.Combine(local, @"Spotify\Storage"), "Spotify_Storage"),
+
+            new("B站 Cache", Path.Combine(roaming, @"bilibili\Cache"), "Bilibili_Cache"),
+            new("B站 Code Cache", Path.Combine(roaming, @"bilibili\Code Cache"), "Bilibili_CodeCache"),
+            new("B站 GPUCache", Path.Combine(roaming, @"bilibili\GPUCache"), "Bilibili_GPUCache"),
+            new("B站 IndexedDB", Path.Combine(roaming, @"bilibili\IndexedDB"), "Bilibili_IndexedDB"),
+            new("B站 Local Storage", Path.Combine(roaming, @"bilibili\Local Storage"), "Bilibili_LocalStorage"),
+            new("B站 Network Cache", Path.Combine(roaming, @"bilibili\Network"), "Bilibili_Network"),
+            new("B站 更新缓存", Path.Combine(local, "bilibili-updater"), "Bilibili_Updater"),
+
+            new("QQ Cache", Path.Combine(roaming, @"QQ\Cache"), "QQ_Cache"),
+            new("QQ Code Cache", Path.Combine(roaming, @"QQ\Code Cache"), "QQ_CodeCache"),
+            new("QQ Local Storage", Path.Combine(roaming, @"QQ\Local Storage"), "QQ_LocalStorage"),
+            new("QQ Network Cache", Path.Combine(roaming, @"QQ\Network"), "QQ_Network"),
+            new("QQEX Cache", Path.Combine(roaming, @"QQEX\Cache"), "QQEX_Cache"),
+            new("QQEX Code Cache", Path.Combine(roaming, @"QQEX\Code Cache"), "QQEX_CodeCache"),
+            new("QQEX GPUCache", Path.Combine(roaming, @"QQEX\GPUCache"), "QQEX_GPUCache"),
+            new("QQEX IndexedDB", Path.Combine(roaming, @"QQEX\IndexedDB"), "QQEX_IndexedDB"),
+            new("QQEX miniapp", Path.Combine(roaming, @"QQEX\miniapp"), "QQEX_miniapp"),
+            new("QQNT Cache", Path.Combine(roaming, @"Tencent\QQNT\Cache"), "Tencent_QQNT_Cache"),
+            new("QQ 音乐缓存", Path.Combine(roaming, @"Tencent\QQMusic\Cache"), "Tencent_QQMusic_Cache"),
+            new("腾讯视频缓存", Path.Combine(roaming, @"Tencent\QQLive\Cache"), "Tencent_QQLive_Cache"),
+            new("腾讯会议缓存", Path.Combine(roaming, @"Tencent\WeMeet\Cache"), "Tencent_WeMeet_Cache"),
+            new("腾讯会议本地缓存", Path.Combine(local, @"Tencent\Wemeet"), "Tencent_Wemeet_Local"),
+            new("腾讯 OMGCACHE", Path.Combine(roaming, @"Tencent\OMGCACHE"), "Tencent_OMGCACHE"),
+            new("腾讯 QQTempSys", Path.Combine(roaming, @"Tencent\QQTempSys"), "Tencent_QQTempSys"),
+
+            new("QQ 文件缓存 Image", Path.Combine(documents, @"Tencent Files\*\Image"), "TencentFiles_Image"),
+            new("QQ 文件缓存 Video", Path.Combine(documents, @"Tencent Files\*\Video"), "TencentFiles_Video"),
+            new("QQ 文件缓存 FileRecv", Path.Combine(documents, @"Tencent Files\*\FileRecv"), "TencentFiles_FileRecv"),
+
+            new("微信 XPlugin Cache", Path.Combine(roaming, @"Tencent\WeChat\XPlugin\*\Cache"), "WeChat_XPlugin_Cache"),
+            new("微信 xwechat Cache", Path.Combine(roaming, @"Tencent\xwechat\*\Cache"), "WeChat_xwechat_Cache"),
+            new("企业微信文档缓存", Path.Combine(documents, @"WXWork\*\Cache"), "WXWork_Document_Cache"),
+            new("企业微信 qtCef Cache", Path.Combine(documents, @"WXWork\qtCef\Cache"), "WXWork_qtCef_Cache"),
+            new("企业微信 GPUCache", Path.Combine(documents, @"WXWork\GPUCache"), "WXWork_GPUCache"),
+            new("企业微信 ShaderCache", Path.Combine(documents, @"WXWork\ShaderCache"), "WXWork_ShaderCache"),
+            new("企业微信 Web Cache", Path.Combine(local, @"wxworkweb\User Data\*\Cache"), "WXWorkWeb_Cache"),
+            new("企业微信 Web Code Cache", Path.Combine(local, @"wxworkweb\User Data\*\Code Cache"), "WXWorkWeb_CodeCache"),
+
+            new("网易云音乐缓存", Path.Combine(local, @"NetEase\CloudMusic\Cache"), "NetEase_CloudMusic_Cache"),
+            new("网易云音乐 GPUCache", Path.Combine(local, @"NetEase\CloudMusic\GPUCache"), "NetEase_CloudMusic_GPUCache")
         ];
     }
 

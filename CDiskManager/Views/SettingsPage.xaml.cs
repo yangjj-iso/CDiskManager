@@ -29,7 +29,7 @@ public sealed partial class SettingsPage : Page
         var dialog = new ContentDialog
         {
             Title = "确认迁移缓存",
-            Content = $"将可迁移的用户级缓存移动到 {target}CDiskManagerCache，并在原路径创建目录联接。\n\n请先关闭 Chrome、Edge、VS Code、Discord、Slack、开发工具和游戏平台。被占用的缓存会迁移失败并保留原路径。\n\n不会迁移 Windows Update、Prefetch、系统日志等系统级目录。",
+            Content = $"将可迁移的用户级缓存移动到 {target}CDiskManagerCache，并在原路径创建目录联接。\n\n请先关闭 B站、QQ、微信、企业微信、网易云、Chrome、Edge、VS Code 等相关客户端。被占用的缓存会迁移失败并保留原路径。\n\n不会迁移 Windows Update、Prefetch、系统日志等系统级目录，也不会默认迁移聊天文件整目录。",
             PrimaryButtonText = "开始迁移",
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Close,

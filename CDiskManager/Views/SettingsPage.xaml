@@ -131,7 +131,7 @@
                         <FontIcon Grid.Column="0" Glyph="&#xE8B7;" FontSize="20" VerticalAlignment="Center"/>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <TextBlock Text="一键迁移用户级缓存" FontWeight="SemiBold"/>
-                            <TextBlock Text="将浏览器、开发工具和常见应用缓存迁移到目标盘，并在原路径创建目录联接"
+                            <TextBlock Text="将 B站、QQ、微信、企业微信、网易云、浏览器和开发工具缓存迁移到目标盘，并在原路径创建目录联接"
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        TextWrapping="Wrap"/>
@@ -149,7 +149,7 @@
 
                     <InfoBar IsOpen="True" IsClosable="False" Severity="Warning"
                              Title="迁移前请关闭相关应用"
-                             Message="Chrome、Edge、VS Code、npm、pip、NuGet、Discord、Slack 等缓存可能被占用；迁移失败的项目会保留原路径。"/>
+                             Message="B站、QQ、微信、企业微信、网易云、Chrome、Edge、VS Code 等缓存可能被占用；迁移失败的项目会保留原路径。"/>
 
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
