@@ -341,6 +341,19 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public void CleanupApplicationCacheIncludesNestedClientCachePatterns()
+    {
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        var appCache = Assert.Single(new CleanupService().GetCategories().Where(c => c.Name == "应用缓存"));
+
+        Assert.Contains(Path.Combine(appData, @"QQ\Partitions\*\Cache"), appCache.Paths);
+        Assert.Contains(Path.Combine(appData, @"QQ\Partitions\*\Code Cache"), appCache.Paths);
+        Assert.Contains(Path.Combine(appData, @"QQEX\users\*\Cache"), appCache.Paths);
+        Assert.Contains(Path.Combine(appData, @"Tencent\QQLive\Webkit3\Cache"), appCache.Paths);
+        Assert.Contains(Path.Combine(appData, @"bilibili\Cache\Cache_Data"), appCache.Paths);
+    }
+
+    [Fact]
     public void CleanupCategoryScanSummaryShowsSkippedRestrictedPaths()
     {
         var category = new CleanupCategory
