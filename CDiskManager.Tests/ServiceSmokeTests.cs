@@ -327,6 +327,23 @@ public sealed class ServiceSmokeTests : IDisposable
         Assert.Equal(1024, result.ReclaimedBytes);
         Assert.False(File.Exists(existingPath));
         Assert.Contains("missing.bin", result.FailedSummary);
+        Assert.Contains("文件不存在", result.FailedSummary);
+    }
+
+    [Fact]
+    public void FileOperationServicePermanentlyDeletesReadonlyFiles()
+    {
+        var readonlyPath = Path.Combine(_root, "readonly.bin");
+        WriteBytes(readonlyPath, 1024, 15);
+        File.SetAttributes(readonlyPath, File.GetAttributes(readonlyPath) | FileAttributes.ReadOnly);
+
+        var result = new FileOperationService().DeleteFiles(
+            [new FileItem { Name = "readonly.bin", FullPath = readonlyPath, Size = 1024 }],
+            useRecycleBin: false);
+
+        Assert.Equal(1, result.DeletedCount);
+        Assert.Equal(0, result.FailedCount);
+        Assert.False(File.Exists(readonlyPath));
     }
 
     [Theory]

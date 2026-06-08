@@ -188,7 +188,7 @@ public partial class DuplicateFilesViewModel : ObservableObject
         }
 
         var failureText = result.FailedCount > 0
-            ? $"，{result.FailedCount} 个文件删除失败"
+            ? $"，{result.FailedCount} 个文件删除失败，{result.FailedSummary}"
             : "";
 
         StatusText = useBin
