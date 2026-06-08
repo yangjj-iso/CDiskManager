@@ -214,7 +214,8 @@ public class CleanupService
                 ct.ThrowIfCancellationRequested();
                 if (command.ExitCode == 0)
                 {
-                    result.CleanedBytes = stats.Bytes;
+                    var actualBytes = ExtractDockerPruneReclaimedBytes(command.Output);
+                    result.CleanedBytes = actualBytes > 0 ? actualBytes : stats.Bytes;
                     result.DeletedFiles = stats.ScannedFiles;
                 }
                 else
@@ -438,8 +439,26 @@ public class CleanupService
         var match = Regex.Match(line, @"([0-9]+(?:\.[0-9]+)?)\s*([KMGT]?i?B)(?:\s*\([^)]*%\))?\s*$", RegexOptions.IgnoreCase);
         if (!match.Success) return 0;
 
-        var value = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
-        var unit = match.Groups[2].Value.ToUpperInvariant();
+        return ParseDockerSize(match.Groups[1].Value, match.Groups[2].Value);
+    }
+
+    internal static long ExtractDockerPruneReclaimedBytes(string output)
+    {
+        if (string.IsNullOrWhiteSpace(output)) return 0;
+
+        var match = Regex.Match(
+            output,
+            @"Total\s+reclaimed\s+space:\s*([0-9]+(?:\.[0-9]+)?)\s*([KMGT]?i?B)",
+            RegexOptions.IgnoreCase);
+        return match.Success
+            ? ParseDockerSize(match.Groups[1].Value, match.Groups[2].Value)
+            : 0;
+    }
+
+    private static long ParseDockerSize(string rawValue, string rawUnit)
+    {
+        var value = double.Parse(rawValue, CultureInfo.InvariantCulture);
+        var unit = rawUnit.ToUpperInvariant();
         var multiplier = unit switch
         {
             "KB" => 1_000d,

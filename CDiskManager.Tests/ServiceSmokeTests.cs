@@ -296,6 +296,15 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Theory]
+    [InlineData("Total reclaimed space: 1.5GB", 1_500_000_000L)]
+    [InlineData("Deleted build cache objects:\nabc\n\nTotal reclaimed space: 24.25MiB", 25_427_968L)]
+    [InlineData("Total reclaimed space: 0B", 0L)]
+    public void DockerPruneParserUsesActualReclaimedSpace(string output, long expectedBytes)
+    {
+        Assert.Equal(expectedBytes, CleanupService.ExtractDockerPruneReclaimedBytes(output));
+    }
+
+    [Theory]
     [InlineData("error during connect: this error may indicate that the docker daemon is not running", "daemon 不可访问")]
     [InlineData("failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine; check if the path is correct and if the daemon is running: open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.", "daemon 不可访问")]
     [InlineData("The system cannot find the file specified", "未找到 docker 命令")]
