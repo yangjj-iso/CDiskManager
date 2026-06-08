@@ -53,6 +53,8 @@ public partial class CleanupViewModel : ObservableObject
         IsScanning = true;
         StatusText = "正在扫描可清理项...";
         SelectionSummary = "";
+        TotalCleanable = "0 B";
+        CleanProgress = 0;
         Categories.Clear();
 
         try
@@ -128,6 +130,7 @@ public partial class CleanupViewModel : ObservableObject
         }
         finally
         {
+            ClearCalculatingStates(Categories);
             IsScanning = false;
             _cts.Dispose();
             _cts = null;
@@ -287,5 +290,11 @@ public partial class CleanupViewModel : ObservableObject
             parts.Add($"示例: {string.Join("；", result.FailedPaths.Take(2).Select(Path.GetFileName))}");
 
         return string.Join("，", parts);
+    }
+
+    internal static void ClearCalculatingStates(IEnumerable<CleanupCategory> categories)
+    {
+        foreach (var category in categories)
+            category.IsCalculating = false;
     }
 }
