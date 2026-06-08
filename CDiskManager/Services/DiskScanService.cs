@@ -148,6 +148,10 @@ public class DiskScanService
                 FindLargeFilesRecursive(dir.FullName, minSize, results, progress, ct);
             }
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch { }
     }
 }

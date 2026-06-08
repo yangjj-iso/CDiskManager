@@ -21,6 +21,7 @@ public partial class LargeFilesViewModel : ObservableObject
     [ObservableProperty] private string _statusText = "扫描指定分区中超过阈值大小的文件";
     [ObservableProperty] private double _minSizeMB = 100;
     [ObservableProperty] private string _currentPath = "";
+    [ObservableProperty] private string _currentPathDisplay = "";
     [ObservableProperty] private string? _selectedDrive;
     [ObservableProperty] private string _resultSummary = "";
     [ObservableProperty] private string _selectionSummary = "未选择文件";
@@ -71,6 +72,7 @@ public partial class LargeFilesViewModel : ObservableObject
         ResultSummary = "";
         UpdateSelectionSummary([]);
         CurrentPath = "";
+        CurrentPathDisplay = "";
         ScannedFolderCount = 0;
         StatusText = "正在扫描...";
 
@@ -89,6 +91,7 @@ public partial class LargeFilesViewModel : ObservableObject
                 lastProgressUpdate = now;
                 ScannedFolderCount = scannedFolders;
                 CurrentPath = p;
+                CurrentPathDisplay = BuildDisplayPath(root, p);
             });
             var minBytes = (long)(MinSizeMB * 1024 * 1024);
 
@@ -101,6 +104,7 @@ public partial class LargeFilesViewModel : ObservableObject
 
             sw.Stop();
             CurrentPath = "";
+            CurrentPathDisplay = "";
             StatusText = LargeFiles.Count > 0
                 ? $"找到 {LargeFiles.Count:N0} 个大文件（> {MinSizeMB:F0} MB），用时 {sw.Elapsed.TotalSeconds:F1} 秒"
                 : $"未找到大于 {MinSizeMB:F0} MB 的文件";
@@ -110,11 +114,15 @@ public partial class LargeFilesViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
+            CurrentPath = "";
+            CurrentPathDisplay = "";
             StatusText = "扫描已取消";
         }
         finally
         {
             IsScanning = false;
+            _cts?.Dispose();
+            _cts = null;
         }
     }
 
@@ -159,5 +167,21 @@ public partial class LargeFilesViewModel : ObservableObject
         SelectionSummary = selected.Count == 0
             ? "未选择文件"
             : $"已选择 {selected.Count:N0} 个文件 · 预计释放 {Helpers.FileSizeHelper.Format(SelectedBytes)}";
+    }
+
+    private static string BuildDisplayPath(string root, string path)
+    {
+        var display = path;
+        try
+        {
+            var relative = Path.GetRelativePath(root, path);
+            if (!relative.StartsWith("..", StringComparison.Ordinal))
+                display = relative == "." ? root : relative;
+        }
+        catch { }
+
+        return display.Length <= 96
+            ? display
+            : "..." + display[^93..];
     }
 }

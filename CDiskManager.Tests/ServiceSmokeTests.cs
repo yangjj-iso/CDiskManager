@@ -33,6 +33,19 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public void LargeFileScanDoesNotSwallowCancellationRaisedByProgress()
+    {
+        WriteBytes(Path.Combine(_root, "cancel-large", "large.bin"), 4096, 12);
+        using var cts = new CancellationTokenSource();
+        var progress = new CancelOnReportProgress(cts);
+
+        var ex = Record.Exception(() =>
+            new DiskScanService().FindLargeFiles(_root, minSize: 1, progress: progress, ct: cts.Token));
+
+        Assert.IsAssignableFrom<OperationCanceledException>(ex);
+    }
+
+    [Fact]
     public async Task DiskScanChildViewIncludesFoldersAndImmediateFiles()
     {
         WriteBytes(Path.Combine(_root, "folder", "inside.bin"), 4096, 1);

@@ -58,7 +58,9 @@
                     <ProgressRing IsActive="{x:Bind ViewModel.IsScanning, Mode=OneWay}"
                                   Width="22" Height="22"/>
                     <TextBlock Text="{x:Bind ViewModel.ScannedFolderCount, Mode=OneWay}"
-                               FontWeight="SemiBold"/>
+                               FontWeight="SemiBold"
+                               MinWidth="56"
+                               TextAlignment="Right"/>
                     <TextBlock Text="个目录"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
@@ -78,9 +80,10 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="正在扫描"
-                               FontWeight="SemiBold"/>
+                               FontWeight="SemiBold"
+                               MinWidth="64"/>
                     <TextBlock Grid.Column="1"
-                               Text="{x:Bind ViewModel.CurrentPath, Mode=OneWay}"
+                               Text="{x:Bind ViewModel.CurrentPathDisplay, Mode=OneWay}"
                                TextTrimming="CharacterEllipsis"
                                Style="{StaticResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
