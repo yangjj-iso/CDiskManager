@@ -187,6 +187,7 @@
                                     </Grid.ColumnDefinitions>
                                     <CheckBox Grid.Column="0"
                                               VerticalAlignment="Center"
+                                              IsEnabled="{Binding CanSelect}"
                                               IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
                                     <StackPanel Grid.Column="1">
                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>

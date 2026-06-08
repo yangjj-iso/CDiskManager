@@ -36,7 +36,7 @@ public partial class SettingsViewModel : ObservableObject
         && SelectedRelocatableCaches.Count > 0
         && HasEnoughCacheTargetSpace(CacheTargetDrive, SelectedCacheBytes);
     public List<Models.CacheRelocationItem> SelectedRelocatableCaches =>
-        RelocatableCaches.Where(i => i.IsSelected && !i.IsRelocated).ToList();
+        RelocatableCaches.Where(i => i.IsSelected && i.CanSelect).ToList();
     public long SelectedCacheBytes => SelectedRelocatableCaches.Sum(i => i.Size);
 
     /// <summary>Raised when the theme selection changes so the host window can apply it.</summary>
@@ -200,7 +200,7 @@ public partial class SettingsViewModel : ObservableObject
             return;
         }
 
-        var movable = RelocatableCaches.Where(i => !i.IsRelocated).ToList();
+        var movable = RelocatableCaches.Where(i => i.CanSelect).ToList();
         var total = movable.Sum(i => i.Size);
         var selected = SelectedRelocatableCaches;
         var selectedTotal = selected.Sum(i => i.Size);
@@ -222,7 +222,7 @@ public partial class SettingsViewModel : ObservableObject
     private void SelectRecommendedRelocatableCaches()
     {
         foreach (var item in RelocatableCaches.Where(i => !i.IsRelocated))
-            item.IsSelected = item.IsRecommended;
+            item.IsSelected = item.IsRecommended && item.CanSelect;
         UpdateCacheRelocationStatus();
     }
 
@@ -230,7 +230,7 @@ public partial class SettingsViewModel : ObservableObject
     private void SelectAllRelocatableCaches()
     {
         foreach (var item in RelocatableCaches.Where(i => !i.IsRelocated))
-            item.IsSelected = true;
+            item.IsSelected = item.CanSelect;
         UpdateCacheRelocationStatus();
     }
 

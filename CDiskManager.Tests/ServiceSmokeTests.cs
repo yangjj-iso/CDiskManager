@@ -452,6 +452,28 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public void CacheRelocationItemDisablesSelectionForEmptyOrRelocatedItems()
+    {
+        var empty = new CacheRelocationItem { Size = 0 };
+        empty.IsSelected = true;
+
+        Assert.False(empty.CanSelect);
+        Assert.False(empty.IsSelected);
+
+        var relocated = new CacheRelocationItem { Size = 1024, IsRelocated = true };
+        relocated.IsSelected = true;
+
+        Assert.False(relocated.CanSelect);
+        Assert.False(relocated.IsSelected);
+
+        var movable = new CacheRelocationItem { Size = 1024 };
+        movable.IsSelected = true;
+
+        Assert.True(movable.CanSelect);
+        Assert.True(movable.IsSelected);
+    }
+
+    [Fact]
     public void CacheRelocationDiscoveryFindsNestedClientCaches()
     {
         var bilibiliCache = Path.Combine(_root, "bilibili", "User Data", "Default", "Cache");

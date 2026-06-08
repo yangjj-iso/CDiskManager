@@ -14,8 +14,15 @@ public partial class CacheRelocationItem : ObservableObject
     [ObservableProperty] private bool _isSelected;
 
     public string SizeFormatted => Helpers.FileSizeHelper.Format(Size);
+    public bool CanSelect => !IsRelocated && Size > 0;
     public string StatusText => IsRelocated ? "已迁移" : IsRecommended ? "推荐迁移" : "需手动确认";
     public string RecommendationLabel => IsRecommended ? "" : "高风险";
+
+    partial void OnIsSelectedChanged(bool value)
+    {
+        if (value && !CanSelect)
+            IsSelected = false;
+    }
 }
 
 public sealed class CacheRelocationResult

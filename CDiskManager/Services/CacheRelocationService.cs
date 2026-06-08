@@ -24,6 +24,7 @@ public sealed class CacheRelocationService
                 {
                     var targetPath = Path.Combine(targetRoot, MakeTargetName(d.SafeName, sourcePath));
                     var relocated = IsReparsePoint(sourcePath);
+                    var size = Directory.Exists(sourcePath) && !relocated ? GetDirectorySize(sourcePath) : 0;
                     return new CacheRelocationItem
                     {
                         Name = d.Name,
@@ -32,8 +33,8 @@ public sealed class CacheRelocationService
                         IsRelocated = relocated,
                         IsRecommended = d.IsRecommended,
                         WarningText = d.WarningText,
-                        Size = Directory.Exists(sourcePath) && !relocated ? GetDirectorySize(sourcePath) : 0,
-                        IsSelected = d.IsRecommended && Directory.Exists(sourcePath) && !relocated
+                        Size = size,
+                        IsSelected = d.IsRecommended && size > 0
                     };
                 }))
             .Where(i => Directory.Exists(i.SourcePath))
