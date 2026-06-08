@@ -29,5 +29,6 @@
     <Compile Include="..\CDiskManager\Services\DiskScanService.cs" Link="Services\DiskScanService.cs" />
     <Compile Include="..\CDiskManager\Services\DuplicateDetector.cs" Link="Services\DuplicateDetector.cs" />
     <Compile Include="..\CDiskManager\Services\FileOperationService.cs" Link="Services\FileOperationService.cs" />
+    <Compile Include="..\CDiskManager\Services\SettingsService.cs" Link="Services\SettingsService.cs" />
   </ItemGroup>
 </Project>

@@ -45,7 +45,7 @@ public class SettingsService
                 var json = File.ReadAllText(SettingsPath);
                 Current = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
             }
-            Normalize();
+            NormalizeSettings(Current);
         }
         catch
         {
@@ -57,7 +57,7 @@ public class SettingsService
     {
         try
         {
-            Normalize();
+            NormalizeSettings(Current);
             Directory.CreateDirectory(SettingsDir);
             var json = JsonSerializer.Serialize(Current, JsonOptions);
             File.WriteAllText(SettingsPath, json);
@@ -68,17 +68,17 @@ public class SettingsService
         }
     }
 
-    private void Normalize()
+    internal static void NormalizeSettings(AppSettings settings)
     {
-        Current.Theme = Current.Theme switch
+        settings.Theme = settings.Theme switch
         {
-            "Light" or "Dark" or "Default" => Current.Theme,
+            "Light" or "Dark" or "Default" => settings.Theme,
             _ => "Default"
         };
 
-        Current.DefaultScanDrive = NormalizeDrive(Current.DefaultScanDrive);
-        Current.LargeFileMinMB = Clamp(Current.LargeFileMinMB, 1, 1_000_000);
-        Current.DuplicateMinMB = Clamp(Current.DuplicateMinMB, 0.1, 100_000);
+        settings.DefaultScanDrive = NormalizeDrive(settings.DefaultScanDrive);
+        settings.LargeFileMinMB = Clamp(settings.LargeFileMinMB, 1, 1_000_000);
+        settings.DuplicateMinMB = Clamp(settings.DuplicateMinMB, 0.1, 100_000);
     }
 
     private static string NormalizeDrive(string? drive)
@@ -86,6 +86,10 @@ public class SettingsService
         if (string.IsNullOrWhiteSpace(drive)) return @"C:\";
 
         var value = drive.Trim();
+        var root = Path.GetPathRoot(value);
+        if (!string.IsNullOrWhiteSpace(root))
+            return root.EndsWith('\\') ? root : root + "\\";
+
         if (value.Length == 2 && value[1] == ':')
             return value + "\\";
 

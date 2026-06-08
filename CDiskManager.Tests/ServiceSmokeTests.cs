@@ -248,6 +248,25 @@ public sealed class ServiceSmokeTests : IDisposable
         Assert.Contains("聊天文件", item.WarningText);
     }
 
+    [Fact]
+    public void SettingsNormalizationClampsInvalidValuesAndUsesDriveRoot()
+    {
+        var settings = new AppSettings
+        {
+            Theme = "Solarized",
+            DefaultScanDrive = @"C:\Users\example\Downloads",
+            LargeFileMinMB = double.NaN,
+            DuplicateMinMB = -5
+        };
+
+        SettingsService.NormalizeSettings(settings);
+
+        Assert.Equal("Default", settings.Theme);
+        Assert.Equal(@"C:\", settings.DefaultScanDrive);
+        Assert.Equal(1, settings.LargeFileMinMB);
+        Assert.Equal(0.1, settings.DuplicateMinMB);
+    }
+
     private static void WriteBytes(string path, int bytes, byte value)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
