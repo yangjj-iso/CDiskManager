@@ -33,6 +33,21 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public async Task DiskScanChildViewIncludesFoldersAndImmediateFiles()
+    {
+        WriteBytes(Path.Combine(_root, "folder", "inside.bin"), 4096, 1);
+        WriteBytes(Path.Combine(_root, "root.bin"), 2048, 2);
+
+        var service = new DiskScanService();
+        var node = await service.ScanAsync(_root);
+        var children = service.BuildChildView(node);
+
+        Assert.Contains(children, c => c.Name == "folder" && c.IsDirectory);
+        Assert.Contains(children, c => c.Name == "root.bin" && c.IsFile);
+        Assert.True(children[0].Size >= children[1].Size);
+    }
+
+    [Fact]
     public async Task DuplicateDetectorFindsOnlyContentMatchesAndGuardKeepsOneFile()
     {
         WriteBytes(Path.Combine(_root, "dup1.dat"), 4096, 7);

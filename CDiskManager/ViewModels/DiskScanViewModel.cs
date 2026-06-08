@@ -23,11 +23,15 @@ public partial class DiskScanViewModel : ObservableObject
     [ObservableProperty] private string _currentPath = "";
     [ObservableProperty] private string? _selectedDrive;
     [ObservableProperty] private string _summaryTitle = "";
+    [ObservableProperty] private string _childFilterText = "";
+    [ObservableProperty] private int _childTypeFilterIndex;
+    [ObservableProperty] private string _childFilterSummary = "";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
     private bool _hasScanResult;
 
     public ObservableCollection<string> AvailableDrives { get; } = [];
+    public string[] ChildTypeFilterOptions { get; } = ["全部", "文件夹", "文件"];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanNavigateUp))]
@@ -82,6 +86,9 @@ public partial class DiskScanViewModel : ObservableObject
         TopConsumers.Clear();
         HasScanResult = false;
         SummaryTitle = "";
+        ChildFilterText = "";
+        ChildTypeFilterIndex = 0;
+        ChildFilterSummary = "";
         Breadcrumbs.Clear();
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -155,23 +162,62 @@ public partial class DiskScanViewModel : ObservableObject
         FileOperationService.OpenInExplorer(node.FullPath, node.IsFile);
     }
 
+    partial void OnChildFilterTextChanged(string value) => UpdateChildren();
+
+    partial void OnChildTypeFilterIndexChanged(int value) => UpdateChildren();
+
     private void UpdateChildren()
     {
         CurrentChildren.Clear();
         TopConsumers.Clear();
         if (CurrentNode == null) return;
 
-        var children = _scanService.BuildChildView(CurrentNode);
-        foreach (var child in children)
+        var allChildren = _scanService.BuildChildView(CurrentNode, maxItems: 1000);
+        var filtered = ApplyChildFilters(allChildren).Take(200).ToList();
+        foreach (var child in filtered)
             CurrentChildren.Add(child);
 
-        foreach (var child in children.Where(c => c.Size > 0).Take(5))
+        foreach (var child in allChildren.Where(c => c.Size > 0).Take(5))
             TopConsumers.Add(child);
 
+        ChildFilterSummary = BuildChildFilterSummary(filtered.Count, allChildren.Count);
         SummaryTitle = CurrentNode == RootNode
             ? $"{CurrentNode.Name} 主要占用"
             : $"当前目录主要占用: {CurrentNode.Name}";
         OnPropertyChanged(nameof(CurrentSizeText));
+    }
+
+    private IEnumerable<FolderNode> ApplyChildFilters(IEnumerable<FolderNode> children)
+    {
+        var query = children;
+        query = ChildTypeFilterIndex switch
+        {
+            1 => query.Where(c => c.IsDirectory),
+            2 => query.Where(c => c.IsFile),
+            _ => query
+        };
+
+        var text = ChildFilterText.Trim();
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            query = query.Where(c =>
+                c.Name.Contains(text, StringComparison.OrdinalIgnoreCase)
+                || c.FullPath.Contains(text, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return query;
+    }
+
+    private string BuildChildFilterSummary(int shownCount, int totalCount)
+    {
+        if (totalCount == 0)
+            return "当前目录没有可显示项目";
+
+        var limited = shownCount >= 200 ? "，最多显示前 200 项" : "";
+        if (string.IsNullOrWhiteSpace(ChildFilterText) && ChildTypeFilterIndex == 0)
+            return $"显示 {shownCount:N0}/{totalCount:N0} 项{limited}";
+
+        return $"筛选后显示 {shownCount:N0}/{totalCount:N0} 项{limited}";
     }
 
     private void RebuildBreadcrumbs()
