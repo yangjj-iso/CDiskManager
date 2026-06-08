@@ -16,6 +16,7 @@ public partial class CleanupViewModel : ObservableObject
     [ObservableProperty] private bool _isCleaning;
     [ObservableProperty] private string _statusText = "点击「扫描」检测可清理的垃圾文件";
     [ObservableProperty] private string _totalCleanable = "0 B";
+    [ObservableProperty] private string _selectionSummary = "";
     [ObservableProperty] private double _cleanProgress;
 
     public bool IsBusy => IsScanning || IsCleaning;
@@ -48,6 +49,7 @@ public partial class CleanupViewModel : ObservableObject
         _cts = new CancellationTokenSource();
         IsScanning = true;
         StatusText = "正在扫描可清理项...";
+        SelectionSummary = "";
         Categories.Clear();
 
         try
@@ -61,6 +63,7 @@ public partial class CleanupViewModel : ObservableObject
                 cat.MatchedPathCount = 0;
                 cat.ScannedFileCount = 0;
                 cat.StatusDetail = "";
+                AttachCategorySelectionTracking(cat);
                 Categories.Add(cat);
             }
 
@@ -75,7 +78,7 @@ public partial class CleanupViewModel : ObservableObject
                     cat.ScannedFileCount = stats.ScannedFiles;
                     cat.Size = stats.Bytes;
                     total += stats.Bytes;
-                    cat.IsSelected = stats.Bytes > 0;
+                    cat.IsSelected = stats.Bytes > 0 && !cat.IsSystemLevel;
 
                     if (stats.Bytes == 0 && stats.MatchedPaths == 0 && cat.Kind != CleanupKind.RecycleBin)
                     {
@@ -93,6 +96,7 @@ public partial class CleanupViewModel : ObservableObject
                     cat.IsCalculating = false;
                 }
                 TotalCleanable = Helpers.FileSizeHelper.Format(total);
+                UpdateSelectionSummary();
             }
 
             StatusText = total > 0
@@ -113,6 +117,30 @@ public partial class CleanupViewModel : ObservableObject
 
     [RelayCommand]
     private void Cancel() => _cts?.Cancel();
+
+    [RelayCommand]
+    private void SelectRecommended()
+    {
+        foreach (var cat in Categories)
+            cat.IsSelected = cat.Size > 0 && !cat.IsSystemLevel;
+        UpdateSelectionSummary();
+    }
+
+    [RelayCommand]
+    private void SelectAllCleanable()
+    {
+        foreach (var cat in Categories)
+            cat.IsSelected = cat.Size > 0;
+        UpdateSelectionSummary();
+    }
+
+    [RelayCommand]
+    private void ClearSelection()
+    {
+        foreach (var cat in Categories)
+            cat.IsSelected = false;
+        UpdateSelectionSummary();
+    }
 
     /// <summary>Sum of selected, non-empty categories.</summary>
     public long SelectedBytes =>
@@ -135,6 +163,29 @@ public partial class CleanupViewModel : ObservableObject
                 ? ""
                 : "所选项目包含系统级目录:\n" + string.Join("\n", warnings);
         }
+    }
+
+    private void AttachCategorySelectionTracking(CleanupCategory category)
+    {
+        category.PropertyChanged -= CategorySelectionChanged;
+        category.PropertyChanged += CategorySelectionChanged;
+    }
+
+    private void CategorySelectionChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(CleanupCategory.IsSelected))
+            UpdateSelectionSummary();
+    }
+
+    private void UpdateSelectionSummary()
+    {
+        var selected = Categories.Where(c => c.IsSelected && c.Size > 0).ToList();
+        var risky = selected.Count(c => c.IsSystemLevel);
+        OnPropertyChanged(nameof(HasSelection));
+        SelectionSummary = selected.Count == 0
+            ? "未选择清理项"
+            : $"已选择 {selected.Count:N0} 项，预计释放 {Helpers.FileSizeHelper.Format(selected.Sum(c => c.Size))}"
+              + (risky > 0 ? $"，其中 {risky:N0} 项为系统级/高风险" : "");
     }
 
     public async Task<long> CleanSelectedAsync()
