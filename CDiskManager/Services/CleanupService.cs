@@ -210,7 +210,7 @@ public class CleanupService
                     ? "volume prune -f"
                     : "system prune -af";
 
-                var command = RunDocker(arguments);
+                var command = RunDocker(arguments, timeoutMs: 120_000);
                 ct.ThrowIfCancellationRequested();
                 if (command.ExitCode == 0)
                 {
@@ -365,7 +365,7 @@ public class CleanupService
 
     private static CleanupScanStats GetDockerStats(CleanupKind kind)
     {
-        var command = RunDocker("system df");
+        var command = RunDocker("system df", timeoutMs: 15_000);
         if (command.ExitCode != 0)
             return new CleanupScanStats(0, 0, 0, StatusMessage: BuildDockerStatusMessage(command));
         if (string.IsNullOrWhiteSpace(command.Output))
@@ -413,10 +413,17 @@ public class CleanupService
         if (string.IsNullOrWhiteSpace(message))
             return "Docker 命令执行失败，请确认 Docker Desktop 已安装并正在运行";
 
+        if (message.Contains("permission denied", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("access is denied", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("权限不足", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("拒绝访问", StringComparison.OrdinalIgnoreCase))
+            return "Docker 权限不足，请以管理员身份运行，或确认当前用户已加入 docker-users 组后重新登录";
+
         if (message.Contains("error during connect", StringComparison.OrdinalIgnoreCase)
             || message.Contains("docker daemon", StringComparison.OrdinalIgnoreCase)
             || message.Contains("daemon is running", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("Cannot connect", StringComparison.OrdinalIgnoreCase))
+            || message.Contains("Cannot connect", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("docker API", StringComparison.OrdinalIgnoreCase))
             return "Docker Desktop 未启动或 Docker daemon 不可访问，请启动后重新扫描";
 
         if (message.Contains("not recognized", StringComparison.OrdinalIgnoreCase)
@@ -480,7 +487,7 @@ public class CleanupService
         return (long)(value * multiplier);
     }
 
-    private static DockerCommandResult RunDocker(string arguments)
+    private static DockerCommandResult RunDocker(string arguments, int timeoutMs)
     {
         try
         {
@@ -498,7 +505,7 @@ public class CleanupService
             if (process == null) return new DockerCommandResult(-1, "", "无法启动 docker");
             var outputTask = process.StandardOutput.ReadToEndAsync();
             var errorTask = process.StandardError.ReadToEndAsync();
-            if (!process.WaitForExit(15_000))
+            if (!process.WaitForExit(timeoutMs))
             {
                 try { process.Kill(entireProcessTree: true); } catch { }
                 return new DockerCommandResult(-1, "", "docker 命令超时");
