@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <PlatformTarget>x64</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
+    <PackageReference Include="xunit" Version="2.8.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\CDiskManager\Models\CacheRelocationItem.cs" Link="Models\CacheRelocationItem.cs" />
+    <Compile Include="..\CDiskManager\Models\CleanupCategory.cs" Link="Models\CleanupCategory.cs" />
+    <Compile Include="..\CDiskManager\Models\DuplicateGroup.cs" Link="Models\DuplicateGroup.cs" />
+    <Compile Include="..\CDiskManager\Models\FileItem.cs" Link="Models\FileItem.cs" />
+    <Compile Include="..\CDiskManager\Models\FolderNode.cs" Link="Models\FolderNode.cs" />
+    <Compile Include="..\CDiskManager\Helpers\FileSizeHelper.cs" Link="Helpers\FileSizeHelper.cs" />
+    <Compile Include="..\CDiskManager\Helpers\NativeHelper.cs" Link="Helpers\NativeHelper.cs" />
+    <Compile Include="..\CDiskManager\Services\CacheRelocationService.cs" Link="Services\CacheRelocationService.cs" />
+    <Compile Include="..\CDiskManager\Services\CleanupService.cs" Link="Services\CleanupService.cs" />
+    <Compile Include="..\CDiskManager\Services\DiskScanService.cs" Link="Services\DiskScanService.cs" />
+    <Compile Include="..\CDiskManager\Services\DuplicateDetector.cs" Link="Services\DuplicateDetector.cs" />
+    <Compile Include="..\CDiskManager\Services\FileOperationService.cs" Link="Services\FileOperationService.cs" />
+  </ItemGroup>
+</Project>

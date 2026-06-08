@@ -395,7 +395,7 @@ public class CleanupService
         return new CleanupScanStats(bytes, bytes > 0 ? 1 : 0, count);
     }
 
-    private static long ExtractDockerReclaimableBytes(string line)
+    internal static long ExtractDockerReclaimableBytes(string line)
     {
         var match = Regex.Match(line, @"([0-9]+(?:\.[0-9]+)?)\s*([KMGT]?i?B)\s*\([^)]*%\)\s*$", RegexOptions.IgnoreCase);
         if (!match.Success) return 0;
