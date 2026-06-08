@@ -21,6 +21,7 @@ public partial class CleanupViewModel : ObservableObject
 
     public bool IsBusy => IsScanning || IsCleaning;
     public bool ShowEmptyState => !IsBusy && Categories.Count == 0;
+    public bool CanCleanSelected => !IsBusy && HasSelection;
 
     public ObservableCollection<CleanupCategory> Categories { get; } = [];
 
@@ -34,12 +35,14 @@ public partial class CleanupViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsBusy));
         OnPropertyChanged(nameof(ShowEmptyState));
+        OnPropertyChanged(nameof(CanCleanSelected));
     }
 
     partial void OnIsCleaningChanged(bool value)
     {
         OnPropertyChanged(nameof(IsBusy));
         OnPropertyChanged(nameof(ShowEmptyState));
+        OnPropertyChanged(nameof(CanCleanSelected));
     }
 
     [RelayCommand]
@@ -194,6 +197,7 @@ public partial class CleanupViewModel : ObservableObject
         var selected = Categories.Where(c => c.IsSelected && c.Size > 0).ToList();
         var risky = selected.Count(c => c.IsSystemLevel);
         OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(CanCleanSelected));
         SelectionSummary = selected.Count == 0
             ? "未选择清理项"
             : $"已选择 {selected.Count:N0} 项，预计释放 {Helpers.FileSizeHelper.Format(selected.Sum(c => c.Size))}"

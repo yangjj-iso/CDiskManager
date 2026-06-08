@@ -50,7 +50,7 @@
                         Style="{StaticResource AccentButtonStyle}"
                         IsEnabled="{x:Bind ViewModel.IsBusy, Mode=OneWay, Converter={StaticResource BoolNegation}}"/>
                 <Button Grid.Column="1" Content="清理勾选项" Click="Clean_Click"
-                        IsEnabled="{x:Bind ViewModel.IsBusy, Mode=OneWay, Converter={StaticResource BoolNegation}}"/>
+                        IsEnabled="{x:Bind ViewModel.CanCleanSelected, Mode=OneWay}"/>
                 <Button Grid.Column="2" Content="取消" Command="{x:Bind ViewModel.CancelCommand}"
                         IsEnabled="{x:Bind ViewModel.IsBusy, Mode=OneWay}"/>
                 <Button Grid.Column="3" Content="低风险" Command="{x:Bind ViewModel.SelectRecommendedCommand}"
