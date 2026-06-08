@@ -93,6 +93,20 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public async Task DuplicateDetectorDoesNotSwallowCancellationRaisedByProgress()
+    {
+        WriteBytes(Path.Combine(_root, "cancel-duplicates", "candidate1.dat"), 4096, 7);
+        WriteBytes(Path.Combine(_root, "cancel-duplicates", "candidate2.dat"), 4096, 7);
+        using var cts = new CancellationTokenSource();
+        var progress = new CancelDuplicateProgress(cts);
+
+        var ex = await Record.ExceptionAsync(() =>
+            new DuplicateDetector().FindDuplicatesAsync(_root, minSize: 1024, progress: progress, ct: cts.Token));
+
+        Assert.IsAssignableFrom<OperationCanceledException>(ex);
+    }
+
+    [Fact]
     public void DuplicateDeleteGuardRejectsEmptySelection()
     {
         var file = new FileItem { Name = "keep.dat", FullPath = Path.Combine(_root, "keep.dat"), Size = 1024 };
@@ -352,5 +366,10 @@ public sealed class ServiceSmokeTests : IDisposable
     private sealed class CancelOnReportProgress(CancellationTokenSource cts) : IProgress<string>
     {
         public void Report(string value) => cts.Cancel();
+    }
+
+    private sealed class CancelDuplicateProgress(CancellationTokenSource cts) : IProgress<(int scanned, string current)>
+    {
+        public void Report((int scanned, string current) value) => cts.Cancel();
     }
 }

@@ -113,6 +113,10 @@ public class DuplicateDetector
                 CollectFilesBySize(dir.FullName, groups, ref scanned, minSize, progress, ct);
             }
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch { }
     }
 

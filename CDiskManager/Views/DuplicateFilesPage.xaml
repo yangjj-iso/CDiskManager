@@ -56,12 +56,14 @@
                             HorizontalAlignment="Right" VerticalAlignment="Center">
                     <ProgressRing IsActive="{x:Bind ViewModel.IsScanning, Mode=OneWay}"
                                   Width="22" Height="22"/>
-                    <TextBlock VerticalAlignment="Center"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}">
-                        <Run Text="已扫描 "/>
-                        <Run Text="{x:Bind ViewModel.ScannedCount, Mode=OneWay}"/>
-                        <Run Text=" 个文件"/>
-                    </TextBlock>
+                    <TextBlock Text="已扫描" VerticalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Text="{x:Bind ViewModel.ScannedCount, Mode=OneWay}"
+                               MinWidth="64"
+                               TextAlignment="Right"
+                               FontWeight="SemiBold"/>
+                    <TextBlock Text="个文件" VerticalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -79,9 +81,10 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="正在扫描"
-                               FontWeight="SemiBold"/>
+                               FontWeight="SemiBold"
+                               MinWidth="64"/>
                     <TextBlock Grid.Column="1"
-                               Text="{x:Bind ViewModel.CurrentPath, Mode=OneWay}"
+                               Text="{x:Bind ViewModel.CurrentPathDisplay, Mode=OneWay}"
                                TextTrimming="CharacterEllipsis"
                                Style="{StaticResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>

@@ -21,6 +21,7 @@ public partial class DuplicateFilesViewModel : ObservableObject
     [ObservableProperty] private string _statusText = "扫描指定分区中内容完全相同的重复文件";
     [ObservableProperty] private int _scannedCount;
     [ObservableProperty] private string _currentPath = "";
+    [ObservableProperty] private string _currentPathDisplay = "";
     [ObservableProperty] private double _minSizeMB = 1;
     [ObservableProperty] private string? _selectedDrive;
     [ObservableProperty] private string _totalWaste = "";
@@ -74,18 +75,21 @@ public partial class DuplicateFilesViewModel : ObservableObject
         SelectionSummary = "";
         SelectedDuplicateCount = 0;
         SelectedDuplicateBytes = 0;
+        CurrentPath = "";
+        CurrentPathDisplay = "";
         StatusText = "正在扫描...";
 
         try
         {
+            var root = SelectedDrive ?? @"C:\";
             var progress = new Progress<(int scanned, string current)>(p =>
             {
                 ScannedCount = p.scanned;
                 CurrentPath = p.current;
+                CurrentPathDisplay = BuildDisplayPath(root, p.current);
             });
 
             var minBytes = (long)(MinSizeMB * 1024 * 1024);
-            var root = SelectedDrive ?? @"C:\";
             var results = await _detector.FindDuplicatesAsync(root, minBytes, progress, _cts.Token);
 
             long waste = 0;
@@ -115,6 +119,7 @@ public partial class DuplicateFilesViewModel : ObservableObject
                 ? $"{DuplicateGroups.Count} 组 · 预计可释放 {TotalWaste}"
                 : "";
             CurrentPath = "";
+            CurrentPathDisplay = "";
             StatusText = DuplicateGroups.Count > 0
                 ? $"找到 {DuplicateGroups.Count} 组重复文件，可释放约 {TotalWaste}"
                 : "未发现重复文件";
@@ -122,11 +127,15 @@ public partial class DuplicateFilesViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
+            CurrentPath = "";
+            CurrentPathDisplay = "";
             StatusText = "扫描已取消";
         }
         finally
         {
             IsScanning = false;
+            _cts?.Dispose();
+            _cts = null;
         }
     }
 
@@ -225,5 +234,21 @@ public partial class DuplicateFilesViewModel : ObservableObject
         SelectionSummary = selected.Count > 0
             ? $"已勾选 {selected.Count:N0} 个文件 · 预计释放 {Helpers.FileSizeHelper.Format(SelectedDuplicateBytes)}"
             : "未勾选要删除的重复文件";
+    }
+
+    private static string BuildDisplayPath(string root, string path)
+    {
+        var display = path;
+        try
+        {
+            var relative = Path.GetRelativePath(root, path);
+            if (!relative.StartsWith("..", StringComparison.Ordinal))
+                display = relative == "." ? root : relative;
+        }
+        catch { }
+
+        return display.Length <= 96
+            ? display
+            : "..." + display[^93..];
     }
 }
