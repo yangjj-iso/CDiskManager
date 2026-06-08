@@ -82,7 +82,11 @@ public partial class CleanupViewModel : ObservableObject
                     total += stats.Bytes;
                     cat.IsSelected = stats.Bytes > 0 && !cat.IsSystemLevel;
 
-                    if (stats.Bytes == 0 && stats.MatchedPaths == 0 && cat.Kind != CleanupKind.RecycleBin)
+                    if (!string.IsNullOrWhiteSpace(stats.StatusMessage))
+                    {
+                        cat.StatusDetail = stats.StatusMessage;
+                    }
+                    else if (stats.Bytes == 0 && stats.MatchedPaths == 0 && cat.Kind != CleanupKind.RecycleBin)
                     {
                         cat.StatusDetail = cat.Kind is CleanupKind.DockerPrune or CleanupKind.DockerVolumes
                             ? "Docker 未运行或没有可回收项目"

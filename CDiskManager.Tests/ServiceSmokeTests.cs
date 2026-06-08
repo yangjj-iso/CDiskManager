@@ -130,6 +130,18 @@ public sealed class ServiceSmokeTests : IDisposable
         Assert.Equal(expectedBytes, CleanupService.ExtractDockerReclaimableBytes(row));
     }
 
+    [Theory]
+    [InlineData("error during connect: this error may indicate that the docker daemon is not running", "daemon 不可访问")]
+    [InlineData("failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine; check if the path is correct and if the daemon is running: open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.", "daemon 不可访问")]
+    [InlineData("The system cannot find the file specified", "未找到 docker 命令")]
+    [InlineData("docker 命令超时", "Docker 命令超时")]
+    public void DockerStatusMessageExplainsWhyDockerScanIsZero(string error, string expectedText)
+    {
+        var message = CleanupService.BuildDockerStatusMessage(new DockerCommandResult(-1, "", error));
+
+        Assert.Contains(expectedText, message);
+    }
+
     [Fact]
     public void CleanupCategoriesSeparateDockerVolumesFromNormalDockerPrune()
     {

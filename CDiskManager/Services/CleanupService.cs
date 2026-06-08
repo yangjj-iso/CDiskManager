@@ -364,8 +364,10 @@ public class CleanupService
     private static CleanupScanStats GetDockerStats(CleanupKind kind)
     {
         var command = RunDocker("system df");
-        if (command.ExitCode != 0 || string.IsNullOrWhiteSpace(command.Output))
-            return new CleanupScanStats(0, 0, 0);
+        if (command.ExitCode != 0)
+            return new CleanupScanStats(0, 0, 0, StatusMessage: BuildDockerStatusMessage(command));
+        if (string.IsNullOrWhiteSpace(command.Output))
+            return new CleanupScanStats(0, 0, 0, StatusMessage: "Docker 可用，但 docker system df 没有返回可解析结果");
 
         long bytes = 0;
         var count = 0;
@@ -393,7 +395,42 @@ public class CleanupService
             }
         }
 
-        return new CleanupScanStats(bytes, bytes > 0 ? 1 : 0, count);
+        return new CleanupScanStats(
+            bytes,
+            bytes > 0 ? 1 : 0,
+            count,
+            StatusMessage: bytes > 0 ? "" : "Docker 可用，当前没有可回收项目");
+    }
+
+    internal static string BuildDockerStatusMessage(DockerCommandResult command)
+    {
+        var message = string.Join(" ", new[] { command.Output, command.Error }
+                .Where(s => !string.IsNullOrWhiteSpace(s)))
+            .Trim();
+
+        if (string.IsNullOrWhiteSpace(message))
+            return "Docker 命令执行失败，请确认 Docker Desktop 已安装并正在运行";
+
+        if (message.Contains("error during connect", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("docker daemon", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("daemon is running", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("Cannot connect", StringComparison.OrdinalIgnoreCase))
+            return "Docker Desktop 未启动或 Docker daemon 不可访问，请启动后重新扫描";
+
+        if (message.Contains("not recognized", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("No such file", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("系统找不到指定的文件", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("The system cannot find the file", StringComparison.OrdinalIgnoreCase))
+            return "未找到 docker 命令，请先安装 Docker Desktop 或检查 PATH";
+
+        if (message.Contains("timeout", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("超时", StringComparison.OrdinalIgnoreCase))
+            return "Docker 命令超时，请确认 Docker Desktop 响应正常后重试";
+
+        var compact = message.ReplaceLineEndings(" ").Trim();
+        return compact.Length > 120
+            ? $"Docker 扫描失败: {compact[..120]}..."
+            : $"Docker 扫描失败: {compact}";
     }
 
     internal static long ExtractDockerReclaimableBytes(string line)
@@ -641,7 +678,12 @@ public class CleanupService
     }
 }
 
-public readonly record struct CleanupScanStats(long Bytes, int MatchedPaths, int ScannedFiles, int SkippedPaths = 0);
+public readonly record struct CleanupScanStats(
+    long Bytes,
+    int MatchedPaths,
+    int ScannedFiles,
+    int SkippedPaths = 0,
+    string StatusMessage = "");
 
 public readonly record struct DockerCommandResult(int ExitCode, string Output, string Error);
 
