@@ -332,6 +332,23 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public void CacheRelocationRollbackRestoresSourceWhenJunctionCreationFailsAfterMove()
+    {
+        var source = Path.Combine(_root, "rollback-source");
+        var target = Path.Combine(_root, "rollback-target");
+        WriteBytes(Path.Combine(target, "cache.bin"), 512, 16);
+
+        var restored = CacheRelocationService.RestoreSourceAfterFailedRelocation(
+            source,
+            target,
+            targetExistedBeforeMove: false);
+
+        Assert.True(restored);
+        Assert.True(File.Exists(Path.Combine(source, "cache.bin")));
+        Assert.False(Directory.Exists(target));
+    }
+
+    [Fact]
     public void FileOperationServiceDeletesExistingFilesAndReportsFailures()
     {
         var existingPath = Path.Combine(_root, "delete-me.bin");

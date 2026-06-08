@@ -133,11 +133,13 @@ public sealed class CacheRelocationService
                     continue;
                 }
 
+                var targetExistedBeforeMove = false;
                 try
                 {
                     ct.ThrowIfCancellationRequested();
                     Directory.CreateDirectory(Path.GetDirectoryName(item.TargetPath)!);
 
+                    targetExistedBeforeMove = Directory.Exists(item.TargetPath);
                     var existingBytes = Directory.Exists(item.SourcePath) ? GetDirectorySize(item.SourcePath) : 0;
                     if (Directory.Exists(item.SourcePath))
                     {
@@ -172,17 +174,38 @@ public sealed class CacheRelocationService
                     result.FailedCount++;
                     result.FailedItems.Add(item.Name);
 
-                    try
-                    {
-                        if (!Directory.Exists(item.SourcePath) && Directory.Exists(item.TargetPath))
-                            Directory.CreateDirectory(item.SourcePath);
-                    }
-                    catch { }
+                    RestoreSourceAfterFailedRelocation(item.SourcePath, item.TargetPath, targetExistedBeforeMove);
                 }
             }
 
             return result;
         }, ct);
+    }
+
+    internal static bool RestoreSourceAfterFailedRelocation(
+        string sourcePath,
+        string targetPath,
+        bool targetExistedBeforeMove)
+    {
+        try
+        {
+            if (Directory.Exists(sourcePath))
+                return true;
+
+            if (!targetExistedBeforeMove && Directory.Exists(targetPath))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
+                Directory.Move(targetPath, sourcePath);
+                return Directory.Exists(sourcePath);
+            }
+
+            Directory.CreateDirectory(sourcePath);
+            return Directory.Exists(sourcePath);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static string BuildTargetRoot(string targetDrive)
