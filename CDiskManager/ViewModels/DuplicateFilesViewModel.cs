@@ -25,6 +25,7 @@ public partial class DuplicateFilesViewModel : ObservableObject
     [ObservableProperty] private string? _selectedDrive;
     [ObservableProperty] private string _totalWaste = "";
     [ObservableProperty] private string _resultSummary = "";
+    [ObservableProperty] private string _selectionSummary = "";
 
     public ObservableCollection<string> AvailableDrives { get; } = [];
     public ObservableCollection<DuplicateGroup> DuplicateGroups { get; } = [];
@@ -42,6 +43,7 @@ public partial class DuplicateFilesViewModel : ObservableObject
         {
             OnPropertyChanged(nameof(HasResults));
             OnPropertyChanged(nameof(ShowEmptyState));
+            UpdateSelectionSummary();
         };
 
         foreach (var p in _analyzer.GetPartitions())
@@ -64,6 +66,7 @@ public partial class DuplicateFilesViewModel : ObservableObject
         ScannedCount = 0;
         TotalWaste = "";
         ResultSummary = "";
+        SelectionSummary = "";
         StatusText = "正在扫描...";
 
         try
@@ -89,13 +92,15 @@ public partial class DuplicateFilesViewModel : ObservableObject
                 for (int i = 1; i < ordered.Count; i++)
                     ordered[i].IsSelected = true;
 
-                DuplicateGroups.Add(new DuplicateGroup
+                var duplicateGroup = new DuplicateGroup
                 {
                     Files = new ObservableCollection<FileItem>(ordered),
                     UnitSize = group[0].Size,
                     Count = group.Count,
                     TotalWaste = Helpers.FileSizeHelper.Format(groupWaste)
-                });
+                };
+                AttachSelectionTracking(duplicateGroup);
+                DuplicateGroups.Add(duplicateGroup);
             }
 
             TotalWaste = Helpers.FileSizeHelper.Format(waste);
@@ -106,6 +111,7 @@ public partial class DuplicateFilesViewModel : ObservableObject
             StatusText = DuplicateGroups.Count > 0
                 ? $"找到 {DuplicateGroups.Count} 组重复文件，可释放约 {TotalWaste}"
                 : "未发现重复文件";
+            UpdateSelectionSummary();
         }
         catch (OperationCanceledException)
         {
@@ -119,6 +125,26 @@ public partial class DuplicateFilesViewModel : ObservableObject
 
     [RelayCommand]
     private void Cancel() => _cts?.Cancel();
+
+    [RelayCommand]
+    private void SelectRecommended()
+    {
+        foreach (var group in DuplicateGroups)
+        {
+            var ordered = group.Files.OrderBy(f => f.LastModified).ToList();
+            for (var i = 0; i < ordered.Count; i++)
+                ordered[i].IsSelected = i > 0;
+        }
+        UpdateSelectionSummary();
+    }
+
+    [RelayCommand]
+    private void ClearSelection()
+    {
+        foreach (var file in DuplicateGroups.SelectMany(g => g.Files))
+            file.IsSelected = false;
+        UpdateSelectionSummary();
+    }
 
     /// <summary>Deletes the supplied duplicate files (to Recycle Bin or permanently per settings). Returns bytes reclaimed.</summary>
     public long DeleteFiles(IEnumerable<FileItem> items)
@@ -156,6 +182,7 @@ public partial class DuplicateFilesViewModel : ObservableObject
         ResultSummary = DuplicateGroups.Count > 0
             ? $"{DuplicateGroups.Count} 组 · 预计可释放 {TotalWaste}"
             : "";
+        UpdateSelectionSummary();
         return result.ReclaimedBytes;
     }
 
@@ -167,4 +194,27 @@ public partial class DuplicateFilesViewModel : ObservableObject
 
     public DuplicateDeleteValidation ValidateDeleteSelection(IEnumerable<FileItem> selectedItems)
         => DuplicateDeleteGuard.Validate(DuplicateGroups, selectedItems);
+
+    private void AttachSelectionTracking(DuplicateGroup group)
+    {
+        foreach (var file in group.Files)
+        {
+            file.PropertyChanged -= FileSelectionChanged;
+            file.PropertyChanged += FileSelectionChanged;
+        }
+    }
+
+    private void FileSelectionChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(FileItem.IsSelected))
+            UpdateSelectionSummary();
+    }
+
+    private void UpdateSelectionSummary()
+    {
+        var selected = GetSelectedFiles();
+        SelectionSummary = selected.Count > 0
+            ? $"已勾选 {selected.Count:N0} 个文件 · 预计释放 {Helpers.FileSizeHelper.Format(selected.Sum(f => f.Size))}"
+            : "未勾选要删除的重复文件";
+    }
 }
