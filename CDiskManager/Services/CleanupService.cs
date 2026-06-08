@@ -8,6 +8,7 @@ public class CleanupService
     public List<CleanupCategory> GetCategories()
     {
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
 
         return
         [
@@ -18,6 +19,12 @@ public class CleanupService
                 Glyph = "\uE7C3",
                 Paths = [
                     Path.GetTempPath(),
+                    Path.Combine(localAppData, "Temp"),
+                    Path.Combine(localAppData, @"Microsoft\Windows\INetCache"),
+                    Path.Combine(localAppData, @"Microsoft\Windows\Temporary Internet Files"),
+                    Path.Combine(localAppData, @"Packages\*\AC\Temp"),
+                    Path.Combine(localAppData, @"Packages\*\AC\INetCache"),
+                    Path.Combine(localAppData, @"Packages\*\TempState"),
                     @"C:\Windows\Temp"
                 ]
             },
@@ -58,6 +65,9 @@ public class CleanupService
                 Glyph = "\uE9F9",
                 Paths = [
                     @"C:\Windows\Logs",
+                    @"C:\Windows\System32\LogFiles",
+                    Path.Combine(programData, @"Microsoft\Windows\WER\ReportArchive"),
+                    Path.Combine(programData, @"Microsoft\Windows\WER\ReportQueue"),
                     Path.Combine(localAppData, "CrashDumps")
                 ]
             },
@@ -66,7 +76,24 @@ public class CleanupService
                 Name = "传递优化文件",
                 Description = "Windows 更新点对点分发的缓存文件",
                 Glyph = "\uE968",
-                Paths = [@"C:\Windows\SoftwareDistribution\DeliveryOptimization"]
+                Paths = [
+                    @"C:\Windows\SoftwareDistribution\DeliveryOptimization",
+                    @"C:\Windows\ServiceProfiles\NetworkService\AppData\Local\Microsoft\Windows\DeliveryOptimization"
+                ]
+            },
+            new CleanupCategory
+            {
+                Name = "着色器缓存",
+                Description = "DirectX、显卡驱动和应用生成的图形缓存",
+                Glyph = "\uE790",
+                Paths = [
+                    Path.Combine(localAppData, "D3DSCache"),
+                    Path.Combine(localAppData, @"NVIDIA\DXCache"),
+                    Path.Combine(localAppData, @"NVIDIA\GLCache"),
+                    Path.Combine(localAppData, @"AMD\DxCache"),
+                    Path.Combine(localAppData, @"AMD\GLCache"),
+                    Path.Combine(localAppData, @"Intel\ShaderCache")
+                ]
             },
             new CleanupCategory
             {
@@ -85,7 +112,11 @@ public class CleanupService
         {
             long total = category.Kind == CleanupKind.RecycleBin
                 ? GetRecycleBinSize()
-                : category.Paths.Sum(p => GetDirectorySize(p, ct));
+                : GetDirectoriesSize(
+                    category.Paths
+                        .SelectMany(ExpandPathPattern)
+                        .Distinct(StringComparer.OrdinalIgnoreCase),
+                    ct);
 
             category.Size = total;
             return total;
@@ -117,7 +148,7 @@ public class CleanupService
         return await Task.Run(() =>
         {
             var result = new CleanupResult();
-            foreach (var path in category.Paths)
+            foreach (var path in category.Paths.SelectMany(ExpandPathPattern).Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 ct.ThrowIfCancellationRequested();
                 if (!Directory.Exists(path))
@@ -157,16 +188,75 @@ public class CleanupService
         }, ct);
     }
 
-    private static long GetDirectorySize(string path, CancellationToken ct)
+    private static long GetDirectoriesSize(IEnumerable<string> paths, CancellationToken ct)
     {
-        if (!Directory.Exists(path)) return 0;
         long size = 0;
-        foreach (var file in SafeEnumerateFiles(path))
+        var seenFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in paths)
         {
             ct.ThrowIfCancellationRequested();
-            try { size += new FileInfo(file).Length; } catch { }
+            if (!Directory.Exists(path)) continue;
+
+            foreach (var file in SafeEnumerateFiles(path))
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!seenFiles.Add(file)) continue;
+                try { size += new FileInfo(file).Length; } catch { }
+            }
         }
+
         return size;
+    }
+
+    private static IEnumerable<string> ExpandPathPattern(string path)
+    {
+        if (!path.Contains('*')) return [path];
+
+        try
+        {
+            return ExpandSegments(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+                .Where(Directory.Exists)
+                .ToList();
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static IEnumerable<string> ExpandSegments(string path)
+    {
+        var wildcardIndex = path.IndexOf('*');
+        if (wildcardIndex < 0)
+        {
+            yield return path;
+            yield break;
+        }
+
+        var separatorBeforeWildcard = path.LastIndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], wildcardIndex);
+        if (separatorBeforeWildcard < 0) yield break;
+
+        var baseDir = path[..separatorBeforeWildcard];
+        var remainder = path[(separatorBeforeWildcard + 1)..];
+        var nextSeparator = remainder.IndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar]);
+        var pattern = nextSeparator >= 0 ? remainder[..nextSeparator] : remainder;
+        var suffix = nextSeparator >= 0 ? remainder[(nextSeparator + 1)..] : "";
+
+        if (!Directory.Exists(baseDir)) yield break;
+
+        foreach (var dir in Directory.EnumerateDirectories(baseDir, pattern))
+        {
+            if (string.IsNullOrEmpty(suffix))
+            {
+                yield return dir;
+                continue;
+            }
+
+            foreach (var expanded in ExpandSegments(Path.Combine(dir, suffix)))
+            {
+                yield return expanded;
+            }
+        }
     }
 
     private static long GetRecycleBinSize()
@@ -209,11 +299,29 @@ public class CleanupService
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         return
         [
-            Path.Combine(localAppData, @"Google\Chrome\User Data\Default\Cache"),
-            Path.Combine(localAppData, @"Google\Chrome\User Data\Default\Code Cache"),
-            Path.Combine(localAppData, @"Microsoft\Edge\User Data\Default\Cache"),
-            Path.Combine(localAppData, @"Microsoft\Edge\User Data\Default\Code Cache"),
-            Path.Combine(appData, @"Mozilla\Firefox\Profiles")
+            Path.Combine(localAppData, @"Google\Chrome\User Data\*\Cache"),
+            Path.Combine(localAppData, @"Google\Chrome\User Data\*\Cache\Cache_Data"),
+            Path.Combine(localAppData, @"Google\Chrome\User Data\*\AutofillAiModelCache"),
+            Path.Combine(localAppData, @"Google\Chrome\User Data\*\Code Cache"),
+            Path.Combine(localAppData, @"Google\Chrome\User Data\*\DawnGraphiteCache"),
+            Path.Combine(localAppData, @"Google\Chrome\User Data\*\DawnWebGPUCache"),
+            Path.Combine(localAppData, @"Google\Chrome\User Data\*\GPUCache"),
+            Path.Combine(localAppData, @"Google\Chrome\User Data\*\GrShaderCache"),
+            Path.Combine(localAppData, @"Google\Chrome\User Data\*\Service Worker\CacheStorage"),
+            Path.Combine(localAppData, @"Google\Chrome\User Data\*\ShaderCache"),
+            Path.Combine(localAppData, @"Microsoft\Edge\User Data\*\Cache"),
+            Path.Combine(localAppData, @"Microsoft\Edge\User Data\*\Cache\Cache_Data"),
+            Path.Combine(localAppData, @"Microsoft\Edge\User Data\*\AutofillAiModelCache"),
+            Path.Combine(localAppData, @"Microsoft\Edge\User Data\*\Code Cache"),
+            Path.Combine(localAppData, @"Microsoft\Edge\User Data\*\DawnGraphiteCache"),
+            Path.Combine(localAppData, @"Microsoft\Edge\User Data\*\DawnWebGPUCache"),
+            Path.Combine(localAppData, @"Microsoft\Edge\User Data\*\GPUCache"),
+            Path.Combine(localAppData, @"Microsoft\Edge\User Data\*\GrShaderCache"),
+            Path.Combine(localAppData, @"Microsoft\Edge\User Data\*\image_cache"),
+            Path.Combine(localAppData, @"Microsoft\Edge\User Data\*\Service Worker\CacheStorage"),
+            Path.Combine(localAppData, @"Microsoft\Edge\User Data\*\ShaderCache"),
+            Path.Combine(appData, @"Mozilla\Firefox\Profiles\*\cache2"),
+            Path.Combine(appData, @"Mozilla\Firefox\Profiles\*\startupCache")
         ];
     }
 }
