@@ -172,8 +172,10 @@ public sealed class ServiceSmokeTests : IDisposable
         Assert.True(systemFile.IsHighRiskPath);
         Assert.Equal("高风险", systemFile.RiskLabel);
         Assert.Contains("系统", systemFile.RiskWarningText);
+        Assert.False(systemFile.CanAutoSelectDuplicate);
         Assert.False(userFile.IsHighRiskPath);
         Assert.Equal("", userFile.RiskLabel);
+        Assert.True(userFile.CanAutoSelectDuplicate);
     }
 
     [Fact]

@@ -11,7 +11,7 @@ public class DuplicateGroup
 
     public string UnitSizeFormatted => Helpers.FileSizeHelper.Format(UnitSize);
     public string Header => $"{Count} 个相同文件";
-    public string Detail => $"单个 {UnitSizeFormatted}，已默认保留修改时间最早的文件";
+    public string Detail => $"单个 {UnitSizeFormatted}，默认保留最早文件，高风险路径需手动确认";
 }
 
 public sealed record DuplicateDeleteValidation(bool CanDelete, string Message, List<FileItem> AllowedFiles);

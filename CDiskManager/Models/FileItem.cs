@@ -22,6 +22,7 @@ public partial class FileItem : ObservableObject
     public string RiskWarningText => IsHighRiskPath
         ? "位于 Windows、Program Files、ProgramData 或磁盘根目录等系统/应用关键位置，删除前请确认用途。"
         : "";
+    public bool CanAutoSelectDuplicate => !IsHighRiskPath;
 
     partial void OnIsSelectedChanged(bool value) => OnPropertyChanged(nameof(DuplicateActionText));
 

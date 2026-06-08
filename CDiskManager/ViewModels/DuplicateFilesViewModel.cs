@@ -101,7 +101,7 @@ public partial class DuplicateFilesViewModel : ObservableObject
                 // Keep the oldest file (likely the original) unselected; pre-select the rest.
                 var ordered = group.OrderBy(f => f.LastModified).ToList();
                 for (int i = 1; i < ordered.Count; i++)
-                    ordered[i].IsSelected = true;
+                    ordered[i].IsSelected = ordered[i].CanAutoSelectDuplicate;
 
                 var duplicateGroup = new DuplicateGroup
                 {
@@ -149,7 +149,7 @@ public partial class DuplicateFilesViewModel : ObservableObject
         {
             var ordered = group.Files.OrderBy(f => f.LastModified).ToList();
             for (var i = 0; i < ordered.Count; i++)
-                ordered[i].IsSelected = i > 0;
+                ordered[i].IsSelected = i > 0 && ordered[i].CanAutoSelectDuplicate;
         }
         UpdateSelectionSummary();
     }
