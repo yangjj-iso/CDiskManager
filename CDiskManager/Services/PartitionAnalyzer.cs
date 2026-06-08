@@ -64,18 +64,37 @@ public class PartitionAnalyzer
             var size = GetDirectorySizeFast(path, ct);
             if (size < 100L * 1024 * 1024) continue; // ignore folders under 100 MB
 
-            suggestions.Add(new MigrationSuggestion
-            {
-                FolderName = name,
-                CurrentPath = path,
-                SuggestedPath = Path.Combine(targetDrive.DriveLetter + "\\", name),
-                Size = size,
-                Reason = $"将「{name}」迁移到 {targetDrive.DriveLetter}（剩余 {targetDrive.FreeFormatted}），可为 C 盘释放 {Helpers.FileSizeHelper.Format(size)}"
-            });
+            suggestions.Add(BuildMigrationSuggestion(name, path, targetDrive, size));
         }
 
         suggestions.Sort((a, b) => b.Size.CompareTo(a.Size));
         return suggestions;
+    }
+
+    internal static MigrationSuggestion BuildMigrationSuggestion(
+        string name,
+        string currentPath,
+        PartitionInfo targetDrive,
+        long size)
+    {
+        var suggestedPath = Path.Combine(targetDrive.DriveLetter + "\\", name);
+        var warnings = new List<string>();
+
+        if (Directory.Exists(suggestedPath))
+            warnings.Add("目标目录已存在，迁移前需要确认是否合并或改名");
+
+        if (targetDrive.FreeSpace < size + 512L * 1024 * 1024)
+            warnings.Add($"目标盘剩余空间不足，建议至少预留 {Helpers.FileSizeHelper.Format(size + 512L * 1024 * 1024)}");
+
+        return new MigrationSuggestion
+        {
+            FolderName = name,
+            CurrentPath = currentPath,
+            SuggestedPath = suggestedPath,
+            Size = size,
+            Reason = $"将「{name}」迁移到 {targetDrive.DriveLetter}（剩余 {targetDrive.FreeFormatted}），可为 C 盘释放 {Helpers.FileSizeHelper.Format(size)}",
+            TargetWarningText = string.Join("；", warnings)
+        };
     }
 
     private static bool IsCDrive(string path)

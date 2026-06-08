@@ -235,6 +235,28 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public void PartitionSuggestionWarnsWhenTargetExistsOrLacksSpace()
+    {
+        var targetRoot = Path.Combine(_root, "DDrive");
+        Directory.CreateDirectory(Path.Combine(targetRoot, "下载"));
+        var targetDrive = new PartitionInfo
+        {
+            DriveLetter = targetRoot,
+            TotalSize = 2L * 1024 * 1024 * 1024,
+            FreeSpace = 200L * 1024 * 1024
+        };
+
+        var suggestion = PartitionAnalyzer.BuildMigrationSuggestion(
+            "下载",
+            Path.Combine(_root, "Downloads"),
+            targetDrive,
+            500L * 1024 * 1024);
+
+        Assert.Contains("目标目录已存在", suggestion.TargetWarningText);
+        Assert.Contains("目标盘剩余空间不足", suggestion.TargetWarningText);
+    }
+
+    [Fact]
     public async Task CacheRelocationMovesDirectoryAndCreatesJunction()
     {
         var source = Path.Combine(_root, "cache-source");

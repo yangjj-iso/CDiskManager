@@ -22,5 +22,6 @@ public class MigrationSuggestion
     public string SuggestedPath { get; set; } = string.Empty;
     public long Size { get; set; }
     public string Reason { get; set; } = string.Empty;
+    public string TargetWarningText { get; set; } = string.Empty;
     public string SizeFormatted => Helpers.FileSizeHelper.Format(Size);
 }

@@ -140,6 +140,11 @@
                                         <Run Text="  →  "/>
                                         <Run Text="{x:Bind SuggestedPath}"/>
                                     </TextBlock>
+                                    <TextBlock Text="{x:Bind TargetWarningText}"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                               TextWrapping="Wrap"
+                                               Visibility="{x:Bind TargetWarningText, Mode=OneWay, Converter={StaticResource EmptyToVisibility}}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
                                     <TextBlock Text="{x:Bind SizeFormatted}" FontWeight="SemiBold" HorizontalAlignment="Right"/>
