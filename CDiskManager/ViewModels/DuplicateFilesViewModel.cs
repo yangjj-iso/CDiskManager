@@ -26,12 +26,17 @@ public partial class DuplicateFilesViewModel : ObservableObject
     [ObservableProperty] private string _totalWaste = "";
     [ObservableProperty] private string _resultSummary = "";
     [ObservableProperty] private string _selectionSummary = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelection))]
+    private int _selectedDuplicateCount;
+    [ObservableProperty] private long _selectedDuplicateBytes;
 
     public ObservableCollection<string> AvailableDrives { get; } = [];
     public ObservableCollection<DuplicateGroup> DuplicateGroups { get; } = [];
 
     public bool HasResults => DuplicateGroups.Count > 0;
     public bool ShowEmptyState => !IsScanning && DuplicateGroups.Count == 0;
+    public bool HasSelection => SelectedDuplicateCount > 0;
 
     public DuplicateFilesViewModel()
     {
@@ -67,6 +72,8 @@ public partial class DuplicateFilesViewModel : ObservableObject
         TotalWaste = "";
         ResultSummary = "";
         SelectionSummary = "";
+        SelectedDuplicateCount = 0;
+        SelectedDuplicateBytes = 0;
         StatusText = "正在扫描...";
 
         try
@@ -213,8 +220,10 @@ public partial class DuplicateFilesViewModel : ObservableObject
     private void UpdateSelectionSummary()
     {
         var selected = GetSelectedFiles();
+        SelectedDuplicateCount = selected.Count;
+        SelectedDuplicateBytes = selected.Sum(f => f.Size);
         SelectionSummary = selected.Count > 0
-            ? $"已勾选 {selected.Count:N0} 个文件 · 预计释放 {Helpers.FileSizeHelper.Format(selected.Sum(f => f.Size))}"
+            ? $"已勾选 {selected.Count:N0} 个文件 · 预计释放 {Helpers.FileSizeHelper.Format(SelectedDuplicateBytes)}"
             : "未勾选要删除的重复文件";
     }
 }

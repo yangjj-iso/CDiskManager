@@ -65,6 +65,33 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public async Task DuplicateDetectorReportsProgressForSmallScans()
+    {
+        WriteBytes(Path.Combine(_root, "candidate1.dat"), 4096, 7);
+        WriteBytes(Path.Combine(_root, "candidate2.dat"), 4096, 7);
+        var progressEvents = new List<(int scanned, string current)>();
+        var progress = new Progress<(int scanned, string current)>(p => progressEvents.Add(p));
+
+        await new DuplicateDetector().FindDuplicatesAsync(_root, minSize: 1024, progress: progress);
+
+        Assert.NotEmpty(progressEvents);
+        Assert.True(progressEvents[0].scanned >= 1);
+        Assert.False(string.IsNullOrWhiteSpace(progressEvents[0].current));
+    }
+
+    [Fact]
+    public void DuplicateDeleteGuardRejectsEmptySelection()
+    {
+        var file = new FileItem { Name = "keep.dat", FullPath = Path.Combine(_root, "keep.dat"), Size = 1024 };
+        var group = new DuplicateGroup { Files = new ObservableCollection<FileItem>([file]) };
+
+        var guard = DuplicateDeleteGuard.Validate([group], []);
+
+        Assert.False(guard.CanDelete);
+        Assert.Contains("请勾选", guard.Message);
+    }
+
+    [Fact]
     public async Task CleanupServiceExpandsWildcardsAndDeletesOnlyFiles()
     {
         var cacheFile = Path.Combine(_root, "profiles", "Default", "Cache", "cache.tmp");

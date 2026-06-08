@@ -101,7 +101,7 @@ public class DuplicateDetector
                     list.Add(file.FullName);
                     scanned++;
 
-                    if (scanned % 200 == 0)
+                    if (scanned == 1 || scanned % 200 == 0)
                         progress?.Report((scanned, file.FullName));
                 }
                 catch { }
