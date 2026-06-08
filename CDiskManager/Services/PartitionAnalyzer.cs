@@ -81,7 +81,7 @@ public class PartitionAnalyzer
     private static bool IsCDrive(string path)
         => path.StartsWith("C:", StringComparison.OrdinalIgnoreCase);
 
-    private static long GetDirectorySizeFast(string path, CancellationToken ct)
+    internal static long GetDirectorySizeFast(string path, CancellationToken ct)
     {
         long size = 0;
         try
@@ -91,6 +91,10 @@ public class PartitionAnalyzer
                 ct.ThrowIfCancellationRequested();
                 try { size += new FileInfo(file).Length; } catch { }
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch { }
         return size;

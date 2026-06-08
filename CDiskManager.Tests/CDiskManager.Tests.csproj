@@ -22,6 +22,7 @@
     <Compile Include="..\CDiskManager\Models\DuplicateGroup.cs" Link="Models\DuplicateGroup.cs" />
     <Compile Include="..\CDiskManager\Models\FileItem.cs" Link="Models\FileItem.cs" />
     <Compile Include="..\CDiskManager\Models\FolderNode.cs" Link="Models\FolderNode.cs" />
+    <Compile Include="..\CDiskManager\Models\PartitionInfo.cs" Link="Models\PartitionInfo.cs" />
     <Compile Include="..\CDiskManager\Helpers\FileSizeHelper.cs" Link="Helpers\FileSizeHelper.cs" />
     <Compile Include="..\CDiskManager\Helpers\NativeHelper.cs" Link="Helpers\NativeHelper.cs" />
     <Compile Include="..\CDiskManager\Services\CacheRelocationService.cs" Link="Services\CacheRelocationService.cs" />
@@ -29,6 +30,7 @@
     <Compile Include="..\CDiskManager\Services\DiskScanService.cs" Link="Services\DiskScanService.cs" />
     <Compile Include="..\CDiskManager\Services\DuplicateDetector.cs" Link="Services\DuplicateDetector.cs" />
     <Compile Include="..\CDiskManager\Services\FileOperationService.cs" Link="Services\FileOperationService.cs" />
+    <Compile Include="..\CDiskManager\Services\PartitionAnalyzer.cs" Link="Services\PartitionAnalyzer.cs" />
     <Compile Include="..\CDiskManager\Services\SettingsService.cs" Link="Services\SettingsService.cs" />
   </ItemGroup>
 </Project>

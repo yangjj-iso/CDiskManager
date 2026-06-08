@@ -175,6 +175,19 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public void PartitionAnalyzerDoesNotSwallowCancellationWhileSizingDirectories()
+    {
+        WriteBytes(Path.Combine(_root, "cancel-partition", "file.bin"), 4096, 14);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var ex = Record.Exception(() =>
+            PartitionAnalyzer.GetDirectorySizeFast(Path.Combine(_root, "cancel-partition"), cts.Token));
+
+        Assert.IsAssignableFrom<OperationCanceledException>(ex);
+    }
+
+    [Fact]
     public async Task CacheRelocationMovesDirectoryAndCreatesJunction()
     {
         var source = Path.Combine(_root, "cache-source");

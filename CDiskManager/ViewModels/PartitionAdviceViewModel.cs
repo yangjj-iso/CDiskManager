@@ -10,6 +10,7 @@ namespace CDiskManager.ViewModels;
 public partial class PartitionAdviceViewModel : ObservableObject
 {
     private readonly PartitionAnalyzer _analyzer;
+    private CancellationTokenSource? _cts;
 
     [ObservableProperty] private string _statusText = "正在分析分区...";
     [ObservableProperty]
@@ -42,6 +43,7 @@ public partial class PartitionAdviceViewModel : ObservableObject
     private async Task LoadAsync()
     {
         if (IsLoading) return;
+        _cts = new CancellationTokenSource();
         IsLoading = true;
         StatusText = "正在分析分区与用户文件夹大小...";
 
@@ -54,7 +56,7 @@ public partial class PartitionAdviceViewModel : ObservableObject
 
         try
         {
-            var suggestions = await _analyzer.GetSuggestionsAsync();
+            var suggestions = await _analyzer.GetSuggestionsAsync(_cts.Token);
             foreach (var s in suggestions)
                 Suggestions.Add(s);
 
@@ -65,6 +67,11 @@ public partial class PartitionAdviceViewModel : ObservableObject
                 ? $"{Suggestions.Count} 个用户文件夹可迁移 · 预计释放 {Helpers.FileSizeHelper.Format(suggestions.Sum(s => s.Size))}"
                 : "当前没有明显需要迁移的用户文件夹";
         }
+        catch (OperationCanceledException)
+        {
+            StatusText = "分析已取消";
+            SummaryText = "已取消迁移建议分析";
+        }
         catch
         {
             StatusText = "分析迁移建议时出错";
@@ -72,9 +79,14 @@ public partial class PartitionAdviceViewModel : ObservableObject
         finally
         {
             IsLoading = false;
+            _cts?.Dispose();
+            _cts = null;
             Loaded = true;
         }
     }
+
+    [RelayCommand]
+    private void Cancel() => _cts?.Cancel();
 
     [RelayCommand]
     private static void OpenFolder(MigrationSuggestion? suggestion)
