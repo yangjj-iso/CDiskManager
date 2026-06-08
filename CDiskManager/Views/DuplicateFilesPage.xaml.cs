@@ -42,11 +42,12 @@ public sealed partial class DuplicateFilesPage : Page
         bool useBin = ViewModel.UseRecycleBin;
         var action = useBin ? "移入回收站" : "永久删除";
         var note = useBin ? "稍后可从回收站还原。" : "此操作不可撤销，文件将被永久删除。";
+        var riskNote = BuildRiskNote(validation.AllowedFiles);
 
         var dialog = new ContentDialog
         {
             Title = "确认删除重复文件",
-            Content = $"将 {validation.AllowedFiles.Count} 个重复文件（共 {Helpers.FileSizeHelper.Format(total)}）{action}？\n每组至少会保留一个文件。\n{note}",
+            Content = $"将 {validation.AllowedFiles.Count} 个重复文件（共 {Helpers.FileSizeHelper.Format(total)}）{action}？\n每组至少会保留一个文件。\n{note}{riskNote}",
             PrimaryButtonText = action,
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Close,
@@ -67,5 +68,14 @@ public sealed partial class DuplicateFilesPage : Page
             XamlRoot = XamlRoot
         };
         await dialog.ShowAsync();
+    }
+
+    private static string BuildRiskNote(System.Collections.Generic.IEnumerable<FileItem> items)
+    {
+        var risky = items.Where(i => i.IsHighRiskPath).Take(3).ToList();
+        if (risky.Count == 0) return "";
+
+        return "\n\n警告: 所选重复文件包含系统/应用关键位置，误删可能导致系统或软件异常。"
+               + $"\n高风险示例: {string.Join("；", risky.Select(i => i.FullPath))}";
     }
 }

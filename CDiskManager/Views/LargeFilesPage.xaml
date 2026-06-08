@@ -155,12 +155,30 @@
                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
 
                         <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"
-                                       TextTrimming="CharacterEllipsis"/>
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{x:Bind Name}" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <Border Grid.Column="1" Padding="6,1" CornerRadius="4"
+                                        Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
+                                        Visibility="{x:Bind RiskLabel, Mode=OneWay, Converter={StaticResource EmptyToVisibility}}">
+                                    <TextBlock Text="{x:Bind RiskLabel}"
+                                               FontSize="11"
+                                               Foreground="{ThemeResource SystemFillColorCautionBrush}"/>
+                                </Border>
+                            </Grid>
                             <TextBlock Text="{x:Bind DirectoryPath}"
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{x:Bind RiskWarningText}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                       TextTrimming="CharacterEllipsis"
+                                       Visibility="{x:Bind RiskWarningText, Mode=OneWay, Converter={StaticResource EmptyToVisibility}}"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="2" VerticalAlignment="Center"

@@ -151,6 +151,32 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public void FileItemMarksSystemLocationsAsHighRisk()
+    {
+        var systemFile = new FileItem
+        {
+            FullPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+                "System32",
+                "drivers",
+                "example.sys")
+        };
+        var userFile = new FileItem
+        {
+            FullPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads",
+                "movie.iso")
+        };
+
+        Assert.True(systemFile.IsHighRiskPath);
+        Assert.Equal("高风险", systemFile.RiskLabel);
+        Assert.Contains("系统", systemFile.RiskWarningText);
+        Assert.False(userFile.IsHighRiskPath);
+        Assert.Equal("", userFile.RiskLabel);
+    }
+
+    [Fact]
     public async Task CleanupServiceExpandsWildcardsAndDeletesOnlyFiles()
     {
         var cacheFile = Path.Combine(_root, "profiles", "Default", "Cache", "cache.tmp");
