@@ -115,6 +115,26 @@ public sealed class ServiceSmokeTests : IDisposable
     }
 
     [Fact]
+    public async Task CleanupServiceHonorsCancellationBeforeDeletingFiles()
+    {
+        var cacheFile = Path.Combine(_root, "cancel-cleanup", "cache.tmp");
+        WriteBytes(cacheFile, 1024, 11);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var category = new CleanupCategory
+        {
+            Name = "cancel cleanup",
+            Paths = [Path.GetDirectoryName(cacheFile)!]
+        };
+
+        var ex = await Record.ExceptionAsync(() => new CleanupService().CleanAsync(category, ct: cts.Token));
+
+        Assert.IsAssignableFrom<OperationCanceledException>(ex);
+        Assert.True(File.Exists(cacheFile));
+    }
+
+    [Fact]
     public async Task CacheRelocationMovesDirectoryAndCreatesJunction()
     {
         var source = Path.Combine(_root, "cache-source");

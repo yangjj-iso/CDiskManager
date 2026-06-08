@@ -102,6 +102,10 @@ public partial class CleanupViewModel : ObservableObject
                             : "命中了目录，但里面没有可清理文件";
                     }
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     cat.StatusDetail = $"扫描失败: {ex.Message}";
@@ -230,6 +234,10 @@ public partial class CleanupViewModel : ObservableObject
                     cat.Size = Math.Max(0, cat.Size - result.CleanedBytes);
                     cat.IsSelected = false;
                     cat.StatusDetail = BuildStatusDetail(result);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
