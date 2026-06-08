@@ -30,7 +30,11 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _cacheRelocationStatus = "";
     [ObservableProperty] private bool _isRelocatingCaches;
 
-    public bool CanRelocateCaches => !IsRelocatingCaches && !IsCDrive(CacheTargetDrive) && SelectedRelocatableCaches.Count > 0;
+    public bool CanRelocateCaches =>
+        !IsRelocatingCaches
+        && !IsCDrive(CacheTargetDrive)
+        && SelectedRelocatableCaches.Count > 0
+        && HasEnoughCacheTargetSpace(CacheTargetDrive, SelectedCacheBytes);
     public List<Models.CacheRelocationItem> SelectedRelocatableCaches =>
         RelocatableCaches.Where(i => i.IsSelected && !i.IsRelocated).ToList();
     public long SelectedCacheBytes => SelectedRelocatableCaches.Sum(i => i.Size);
@@ -201,10 +205,13 @@ public partial class SettingsViewModel : ObservableObject
         var selected = SelectedRelocatableCaches;
         var selectedTotal = selected.Sum(i => i.Size);
         var highRiskCount = selected.Count(i => !i.IsRecommended);
+        var hasEnoughSpace = HasEnoughCacheTargetSpace(CacheTargetDrive, selectedTotal);
         CacheRelocationStatus = IsCDrive(CacheTargetDrive)
             ? "请选择 C 盘以外的目标盘"
-            : $"发现 {movable.Count:N0} 项可迁移缓存，约 {Helpers.FileSizeHelper.Format(total)}；已选择 {selected.Count:N0} 项，约 {Helpers.FileSizeHelper.Format(selectedTotal)}";
-        if (highRiskCount > 0 && !IsCDrive(CacheTargetDrive))
+            : hasEnoughSpace
+                ? $"发现 {movable.Count:N0} 项可迁移缓存，约 {Helpers.FileSizeHelper.Format(total)}；已选择 {selected.Count:N0} 项，约 {Helpers.FileSizeHelper.Format(selectedTotal)}"
+                : $"目标盘可用空间不足；已选择 {selected.Count:N0} 项，约 {Helpers.FileSizeHelper.Format(selectedTotal)}";
+        if (highRiskCount > 0 && !IsCDrive(CacheTargetDrive) && hasEnoughSpace)
             CacheRelocationStatus += $"，其中 {highRiskCount:N0} 项需手动确认";
         OnPropertyChanged(nameof(CanRelocateCaches));
         OnPropertyChanged(nameof(SelectedRelocatableCaches));
@@ -238,4 +245,27 @@ public partial class SettingsViewModel : ObservableObject
     private static bool IsCDrive(string? drive)
         => !string.IsNullOrWhiteSpace(drive)
            && drive.Trim().StartsWith("C:", StringComparison.OrdinalIgnoreCase);
+
+    internal static bool HasEnoughCacheTargetSpace(string? drive, long bytes)
+    {
+        if (bytes <= 0) return true;
+        if (string.IsNullOrWhiteSpace(drive)) return false;
+
+        try
+        {
+            var root = drive.Trim();
+            if (root.Length == 2 && root[1] == ':')
+                root += "\\";
+            if (!root.EndsWith('\\'))
+                root += "\\";
+
+            var info = new DriveInfo(root);
+            if (!info.IsReady) return false;
+            return info.AvailableFreeSpace > bytes + 512L * 1024 * 1024;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

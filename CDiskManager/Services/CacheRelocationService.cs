@@ -155,7 +155,6 @@ public sealed class CacheRelocationService
                         Directory.CreateDirectory(item.TargetPath);
                     }
 
-                    ct.ThrowIfCancellationRequested();
                     Directory.CreateDirectory(Path.GetDirectoryName(item.SourcePath)!);
                     if (!CreateJunction(item.SourcePath, item.TargetPath))
                         throw new IOException("创建目录联接失败");
