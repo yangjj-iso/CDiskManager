@@ -220,7 +220,7 @@ public class CleanupService
                 else
                 {
                     result.FailedFiles = 1;
-                    result.FailedPaths.Add(string.IsNullOrWhiteSpace(command.Error) ? "docker" : command.Error.Trim());
+                    result.FailedPaths.Add(BuildDockerStatusMessage(command));
                 }
                 progress?.Report(category.Name);
                 return result;
@@ -435,7 +435,7 @@ public class CleanupService
 
     internal static long ExtractDockerReclaimableBytes(string line)
     {
-        var match = Regex.Match(line, @"([0-9]+(?:\.[0-9]+)?)\s*([KMGT]?i?B)\s*\([^)]*%\)\s*$", RegexOptions.IgnoreCase);
+        var match = Regex.Match(line, @"([0-9]+(?:\.[0-9]+)?)\s*([KMGT]?i?B)(?:\s*\([^)]*%\))?\s*$", RegexOptions.IgnoreCase);
         if (!match.Success) return 0;
 
         var value = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);

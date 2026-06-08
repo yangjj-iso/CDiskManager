@@ -288,6 +288,8 @@ public sealed class ServiceSmokeTests : IDisposable
     [InlineData("Images          7          2         1.09GB    769.2MB (70%)", 769_200_000L)]
     [InlineData("Build Cache     42         42        2.4GiB    1.2GiB (50%)", 1_288_490_188L)]
     [InlineData("Local Volumes   4          0         12.4MB    0B (0%)", 0L)]
+    [InlineData("Images          5          1         10.3GB    1.5GB", 1_500_000_000L)]
+    [InlineData("Build Cache     0          0         0B        0B", 0L)]
     public void DockerReclaimableParserHandlesDockerSystemDfRows(string row, long expectedBytes)
     {
         Assert.Equal(expectedBytes, CleanupService.ExtractDockerReclaimableBytes(row));
