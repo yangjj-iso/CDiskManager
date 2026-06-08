@@ -106,7 +106,13 @@
                                 <TextBlock Text="清理可释放项"/>
                             </StackPanel>
                         </Button>
-                        <Button Grid.Column="2" Click="Refresh_Click" ToolTipService.ToolTip="刷新磁盘信息">
+                        <Button Grid.Column="2" Click="GoToSettings">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE8B7;" FontSize="16"/>
+                                <TextBlock Text="迁移客户端缓存"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="3" Click="Refresh_Click" ToolTipService.ToolTip="刷新磁盘信息">
                             <FontIcon Glyph="&#xE72C;" FontSize="16"/>
                         </Button>
                     </Grid>
@@ -119,6 +125,7 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
@@ -177,6 +184,27 @@
                                    TextTrimming="CharacterEllipsis"/>
                         <Button Content="查找重复文件" Click="GoToDuplicateFiles"/>
                     </StackPanel>
+                </Border>
+                <Border Grid.Row="2" Grid.ColumnSpan="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="12">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Grid.Column="0" Glyph="&#xE8B7;" HorizontalAlignment="Left"
+                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock Text="客户端缓存迁移" FontWeight="SemiBold"/>
+                            <TextBlock Text="{x:Bind ViewModel.CacheRelocationHint, Mode=OneWay}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Button Grid.Column="2" Content="设置迁移" Click="GoToSettings" VerticalAlignment="Center"/>
+                    </Grid>
                 </Border>
             </Grid>
 

@@ -26,6 +26,7 @@ public sealed partial class DashboardPage : Page
     private void GoToCleanup(object sender, RoutedEventArgs e) => Navigate("Cleanup");
     private void GoToLargeFiles(object sender, RoutedEventArgs e) => Navigate("LargeFiles");
     private void GoToDuplicateFiles(object sender, RoutedEventArgs e) => Navigate("DuplicateFiles");
+    private void GoToSettings(object sender, RoutedEventArgs e) => Navigate("Settings");
 
     private static void Navigate(string tag)
     {

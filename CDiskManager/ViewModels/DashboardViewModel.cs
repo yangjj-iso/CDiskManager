@@ -24,6 +24,7 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty] private string _cleanupHint = "扫描垃圾文件、下载缓存和系统临时目录";
     [ObservableProperty] private string _largeFileHint = "找出最占空间的文件，按需删除或迁移";
     [ObservableProperty] private string _duplicateHint = "识别内容相同的副本，减少重复占用";
+    [ObservableProperty] private string _cacheRelocationHint = "把 B站、QQ、微信等客户端缓存迁移到其他盘";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PercentLabel))]
@@ -76,6 +77,7 @@ public partial class DashboardViewModel : ObservableObject
                 : "定期清理临时文件，保持系统盘余量";
             LargeFileHint = "定位大安装包、视频、镜像和旧下载文件";
             DuplicateHint = "查找重复备份、重复下载和重复媒体文件";
+            CacheRelocationHint = "将 B站、QQ、微信、网易云等客户端缓存迁移到其他盘";
         }
         else
         {
@@ -88,6 +90,7 @@ public partial class DashboardViewModel : ObservableObject
             CDrivePercent = 0;
             PrimaryActionText = "刷新磁盘信息";
             RecommendationText = "未读取到 C 盘信息，请刷新磁盘状态。";
+            CacheRelocationHint = "选择目标盘后迁移常见客户端缓存";
         }
     }
 }

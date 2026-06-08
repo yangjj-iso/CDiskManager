@@ -73,6 +73,14 @@ public sealed partial class MainWindow : Window
 
     public void NavigateTo(string tag)
     {
+        if (string.Equals(tag, "Settings", StringComparison.Ordinal))
+        {
+            NavView.SelectedItem = NavView.SettingsItem;
+            if (ContentFrame.CurrentSourcePageType != typeof(SettingsPage))
+                ContentFrame.Navigate(typeof(SettingsPage), null, new EntranceNavigationTransitionInfo());
+            return;
+        }
+
         foreach (var menuItem in NavView.MenuItems.OfType<NavigationViewItem>())
         {
             if (string.Equals(menuItem.Tag?.ToString(), tag, StringComparison.Ordinal))
